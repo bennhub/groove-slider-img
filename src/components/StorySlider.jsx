@@ -294,18 +294,21 @@ const ProgressModal = ({ isOpen, progress, message }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content">
+      <div className="modal-content export-progress">
         <div className="loading-container">
-          <Loader className="animate-spin" />
-          <p>{message}</p>
-          {progress !== null && (
-            <div className="progress-bar-container">
-              <div 
-                className="progress-bar-fill" 
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          )}
+          <h3 className="progress-title">{message}</h3>
+          <div className="progress-bar-container">
+            <div 
+              className="progress-bar-fill" 
+              style={{ 
+                width: `${progress || 0}%`,
+                transition: 'width 0.3s ease-in-out'
+              }} 
+            />
+          </div>
+          <div className="progress-percentage">
+            {Math.round(progress || 0)}%
+          </div>
         </div>
       </div>
     </div>
@@ -516,44 +519,81 @@ const BottomMenu = ({
 }) => {
   const [showDurationPanel, setShowDurationPanel] = useState(false);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
+  const [selectedBar, setSelectedBar] = useState(1);
+
+  // Calculate duration based on BPM and selected bar length
+  const calculateDuration = (bars, bpm) => {
+    // Duration = (bars * beats per bar * seconds per beat)
+    // 4 beats per bar (assuming 4/4 time)
+    // seconds per beat = 60/bpm
+    return (bars * 4 * 60) / bpm;
+  };
+
+  const handleBarChange = (bars) => {
+    setSelectedBar(bars);
+    const newDuration = calculateDuration(bars, currentBPM);
+    onDurationChange(newDuration);
+  };
+
+  const barOptions = [
+    { value: 0.125, label: '⅛ Bar' },  
+    { value: 0.25, label: '¼ Bar' },   
+    { value: 0.5, label: '½ Bar' },
+    { value: 1, label: '1 Bar' },
+    { value: 2, label: '2 Bars' },
+    { value: 4, label: '4 Bars' },
+    { value: 8, label: '8 Bars' },
+    { value: 16, label: '16 Bars' }
+  ];
  
   return (
     <div className="bottom-menu">
       {showDurationPanel && (
         <div className="duration-panel">
           <div className="duration-controls">
-            <input 
-              type="range"
-              min="1"
-              max="12"
-              value={duration}
-              onChange={(e) => onDurationChange(parseInt(e.target.value))}
-              className="duration-slider"
-            />
-            <div className="duration-text">
-              Speed: {duration}s/image
+            <h3>Slide Duration</h3>
+            <div className="bar-options">
+              {[
+                { value: 0.125, label: '⅛ Bar' }, 
+                { value: 0.25, label: '¼ Bar' },
+                { value: 0.5, label: '½ Bar' },
+                { value: 1, label: '1 Bar' },
+                { value: 2, label: '2 Bars' },
+                { value: 4, label: '4 Bars' },
+                { value: 8, label: '8 Bars' },
+                { value: 16, label: '16 Bars' }
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  className={`bar-option ${selectedBar === option.value ? 'selected' : ''}`}
+                  onClick={() => {
+                    const newDuration = (option.value * 4 * 60) / bpm;
+                    setSelectedBar(option.value);
+                    onDurationChange(newDuration);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
-          </div>
-          <div className="duration-timeline">
-            {[...Array(12)].map((_, index) => (
-              <div key={index} className="timeline-marker">
-                {index + 1}
-              </div>
-            ))}
+            <div className="duration-info">
+              <span>Current Duration: {duration.toFixed(2)}s</span>
+              <span className="bpm-info">at {bpm} BPM</span>
+            </div>
           </div>
         </div>
       )}
       
       {showMusicPanel && (
-  <MusicPanel
-    onUpload={onMusicUpload}
-    onBPMChange={onBPMChange}
-    currentBPM={bpm}
-    onStartPointChange={onStartPointChange}  // Pass through from props
-    musicStartPoint={musicStartPoint}        // Pass through from props
-    musicUrl={musicUrl}
-  />
-)}
+        <MusicPanel
+          onUpload={onMusicUpload}
+          onBPMChange={onBPMChange}
+          currentBPM={bpm}
+          onStartPointChange={onStartPointChange}
+          musicStartPoint={musicStartPoint}
+          musicUrl={musicUrl}
+        />
+      )}
       
       <div className="bottom-menu-buttons">
         <button 
@@ -566,7 +606,7 @@ const BottomMenu = ({
           <Clock className="bottom-menu-icon" />
           <span className="bottom-menu-text">Speed</span>
         </button>
- 
+
         <button 
           className="bottom-menu-button"
           onClick={() => {
@@ -577,7 +617,7 @@ const BottomMenu = ({
           <Music className="bottom-menu-icon" />
           <span className="bottom-menu-text">Music</span>
         </button>
- 
+
         <button 
           className="bottom-menu-button"
           onClick={onPlayPause}
@@ -589,7 +629,7 @@ const BottomMenu = ({
           )}
           <span className="bottom-menu-text">{isPlaying ? 'Pause' : 'Play'}</span>
         </button>
- 
+
         <div className="bottom-menu-right-group">
           <button 
             className="bottom-menu-button"
@@ -598,7 +638,7 @@ const BottomMenu = ({
             <Edit className="bottom-menu-icon" />
             <span className="bottom-menu-text">Edit</span>
           </button>
- 
+
           <label className="bottom-menu-button">
             <ImagePlus className="bottom-menu-icon" />
             <span className="bottom-menu-text">Add</span>
@@ -611,7 +651,7 @@ const BottomMenu = ({
               className="hidden-input"
             />
           </label>
- 
+
           <button className="bottom-menu-button" onClick={onSaveSession}>
             <Save className="bottom-menu-icon" />
             <span className="bottom-menu-text">Export</span>
@@ -648,6 +688,9 @@ const StorySlider = () => {
   const [musicUrl, setMusicUrl] = useState(null);
   const [bpm, setBpm] = useState(120);
   const [musicStartPoint, setMusicStartPoint] = useState(0);
+
+  // Image Preload
+  const [preloadedImages, setPreloadedImages] = useState({});
   
   // Touch State
   const [touchStart, setTouchStart] = useState(null);
@@ -657,6 +700,45 @@ const StorySlider = () => {
   const musicRef = useRef(null);
   const intervalRef = useRef(null);
   const controls = useAnimation();
+
+  // Image Preload
+  const preloadImage = (url) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(url);
+      img.onerror = reject;
+      img.src = url;
+    });
+  };
+  
+  // Add this useEffect to preload adjacent images
+  useEffect(() => {
+    const preloadAdjacentImages = async () => {
+      const indicesToPreload = [
+        currentIndex - 1,
+        currentIndex,
+        currentIndex + 1
+      ].filter(index => index >= 0 && index < stories.length);
+  
+      for (const index of indicesToPreload) {
+        if (!preloadedImages[stories[index].url]) {
+          try {
+            await preloadImage(stories[index].url);
+            setPreloadedImages(prev => ({
+              ...prev,
+              [stories[index].url]: true
+            }));
+          } catch (error) {
+            console.error('Failed to preload image:', error);
+          }
+        }
+      }
+    };
+  
+    if (stories.length > 0) {
+      preloadAdjacentImages();
+    }
+  }, [currentIndex, stories]);
 
   // Load FFmpeg on mount
   useEffect(() => {
@@ -972,38 +1054,51 @@ const handleDelete = (index) => {
   // Render logic
   return (
     <div className="app-container">
-      <div className="app-content">
-        <div className="slider-container">
-          <h1 className="slider-title">Groove Gallery</h1>
-          
-          {stories.length === 0 ? (
-            <EmptyState onFileUpload={handleFileUpload} />
-          ) : (
-            <div 
-              className="story-container"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            >
+    <div className="app-content">
+      <div className="slider-container">
+        <h1 className="slider-title">Groove Gallery</h1>
+        
+        {stories.length === 0 ? (
+          <EmptyState onFileUpload={handleFileUpload} />
+        ) : (
+          <div 
+            className="story-container"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 className="story-slide"
                 key={currentIndex}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
+                transition={{ 
+                  duration: 0.2,
+                  ease: "easeInOut"
+                }}
               >
-                <div className="media-content">
+                <div className="media-wrapper">
                   <img 
                     src={stories[currentIndex].url} 
                     alt={stories[currentIndex].caption} 
                     className="media-content" 
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      willChange: 'opacity'
+                    }}
+                    loading="eager"
                   />
                   <div className="caption">
                     {stories[currentIndex].caption}
                   </div>
                 </div>
               </motion.div>
+            </AnimatePresence>
 
               <NavigationButtons 
                 onPrevious={handlePrevious}
