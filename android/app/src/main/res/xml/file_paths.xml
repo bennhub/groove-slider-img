@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Access to specific subdirectories in external storage -->
+    <external-path name="my_images" path="Pictures/" />
+    <external-path name="my_videos" path="Movies/" />
+    <external-path name="my_downloads" path="Download/" />
+
+    <!-- Access to app-specific cache directory -->
+    <cache-path name="my_cache" path="cache/" />
+
+    <!-- Access to app-specific external files directory -->
+    <external-files-path name="my_external_files" path="." />
+</paths>
