@@ -866,6 +866,37 @@ body {
   gap: 16px;
 }
 
+.tap-tempo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.tap-button {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  border: 2px solid #4a90e2;
+  background-color: white;
+  color: #4a90e2;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tap-button:active {
+  background-color: #4a90e2;
+  color: white;
+  transform: scale(0.98);
+}
+
+.manual-bpm {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
 .bpm-control {
   display: flex;
   align-items: center;

@@ -62,6 +62,53 @@ const loadFFmpeg = async () => {
     throw error;
   }
 };
+//==============================================
+// TAP TEMPO COMPONENT
+//==============================================
+const TapTempo = ({ onBPMChange }) => {
+  const [taps, setTaps] = useState([]);
+  const [currentBPM, setCurrentBPM] = useState(0);
+
+  const handleTap = () => {
+    const now = Date.now();
+    const newTaps = [...taps, now].slice(-4); // Keep last 4 taps
+    setTaps(newTaps);
+
+    if (newTaps.length > 1) {
+      const intervals = [];
+      for (let i = 1; i < newTaps.length; i++) {
+        intervals.push(newTaps[i] - newTaps[i - 1]);
+      }
+      const averageInterval = intervals.reduce((a, b) => a + b) / intervals.length;
+      const bpm = Math.round(60000 / averageInterval);
+      
+      if (bpm >= 60 && bpm <= 180) {
+        setCurrentBPM(bpm);
+        onBPMChange(bpm);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (taps.length > 0 && Date.now() - taps[taps.length - 1] > 2000) {
+        setTaps([]);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [taps]);
+
+  return (
+    <div className="tap-tempo">
+      <button 
+        onClick={handleTap}
+        className="tap-button"
+      >
+        Tap Tempo: {currentBPM > 0 ? `${currentBPM} BPM` : 'Tap to rhythm'}
+      </button>
+    </div>
+  );
+};
 
 //==============================================
 // MUSIC PANEL COMPONENT
@@ -75,7 +122,7 @@ const MusicPanel = ({ onUpload, onBPMChange, currentBPM }) => {
         <div className="music-upload">
           <label className="upload-button">
             <Music className="icon" />
-            <span>Upload Background Music</span>
+            <span>Upload Music</span>
             <input
               type="file"
               accept="audio/*"
@@ -95,15 +142,18 @@ const MusicPanel = ({ onUpload, onBPMChange, currentBPM }) => {
         </div>
         
         <div className="bpm-control">
-          <label>BPM:</label>
-          <input
-            type="number"
-            min="1"
-            max="300"
-            value={currentBPM}
-            onChange={(e) => onBPMChange(parseInt(e.target.value))}
-            className="bpm-input"
-          />
+          <TapTempo onBPMChange={onBPMChange} />
+          <div className="manual-bpm">
+            <label>Manual BPM:</label>
+            <input
+              type="number"
+              min="60"
+              max="180"
+              value={currentBPM}
+              onChange={(e) => onBPMChange(parseInt(e.target.value))}
+              className="bpm-input"
+            />
+          </div>
         </div>
 
         <div className="music-player">
