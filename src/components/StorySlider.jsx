@@ -113,8 +113,43 @@ const TapTempo = ({ onBPMChange }) => {
 //==============================================
 // MUSIC PANEL COMPONENT
 //==============================================
-const MusicPanel = ({ onUpload, onBPMChange, currentBPM }) => {
+const MusicPanel = ({ onUpload, onBPMChange, currentBPM, onStartPointChange }) => {
   const audioRef = useRef(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [startPoint, setStartPoint] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handlePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleSetStartPoint = () => {
+    if (audioRef.current) {
+      const newStartPoint = currentTime;
+      setStartPoint(newStartPoint);
+      audioRef.current.currentTime = newStartPoint;
+      onStartPointChange(newStartPoint); // Pass the start point up
+    }
+  };
+
+  const formatTime = (timeInSeconds) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="music-panel">
@@ -133,6 +168,7 @@ const MusicPanel = ({ onUpload, onBPMChange, currentBPM }) => {
                   onUpload(url);
                   if (audioRef.current) {
                     audioRef.current.src = url;
+                    audioRef.current.currentTime = startPoint;
                   }
                 }
               }}
@@ -157,7 +193,25 @@ const MusicPanel = ({ onUpload, onBPMChange, currentBPM }) => {
         </div>
 
         <div className="music-player">
-          <audio ref={audioRef} controls />
+          <audio 
+            ref={audioRef}
+            controls
+            onTimeUpdate={handleTimeUpdate}
+          />
+          <div className="start-point-controls">
+            <div className="time-display">
+              Current Time: {formatTime(currentTime)}
+            </div>
+            <div className="start-point-display">
+              Start Point: {formatTime(startPoint)}
+            </div>
+            <button 
+              className="set-start-point-button"
+              onClick={handleSetStartPoint}
+            >
+              Set Start Point
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -456,7 +510,9 @@ const BottomMenu = ({
   onMusicUpload,
   onBPMChange,
   musicUrl,
-  bpm
+  bpm,
+  onStartPointChange,
+  musicStartPoint
 }) => {
   const [showDurationPanel, setShowDurationPanel] = useState(false);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
@@ -489,13 +545,15 @@ const BottomMenu = ({
       )}
       
       {showMusicPanel && (
-        <MusicPanel
-          onUpload={onMusicUpload}
-          onBPMChange={onBPMChange}
-          currentBPM={bpm}  
-          musicUrl={musicUrl}
-        />
-      )}
+  <MusicPanel
+    onUpload={onMusicUpload}
+    onBPMChange={onBPMChange}
+    currentBPM={bpm}
+    onStartPointChange={onStartPointChange}  // Pass through from props
+    musicStartPoint={musicStartPoint}        // Pass through from props
+    musicUrl={musicUrl}
+  />
+)}
       
       <div className="bottom-menu-buttons">
         <button 
@@ -589,6 +647,7 @@ const StorySlider = () => {
   // Music State
   const [musicUrl, setMusicUrl] = useState(null);
   const [bpm, setBpm] = useState(120);
+  const [musicStartPoint, setMusicStartPoint] = useState(0);
   
   // Touch State
   const [touchStart, setTouchStart] = useState(null);
@@ -636,6 +695,7 @@ const StorySlider = () => {
     setMusicUrl(url);
     if (musicRef.current) {
       musicRef.current.src = url;
+      musicRef.current.currentTime = musicStartPoint;
     }
   };
 
@@ -673,10 +733,11 @@ const StorySlider = () => {
       }
       startAutoRotation();
       if (musicRef.current) {
-        musicRef.current.play();
+        musicRef.current.currentTime = musicStartPoint; // Use the stored start point
+        musicRef.current.play().catch(err => console.log('Play error:', err));
       }
     }
-    setIsPlaying(prev => !prev);
+    setIsPlaying((prev) => !prev);
   };
 
   // Cleanup on unmount
@@ -913,7 +974,7 @@ const handleDelete = (index) => {
     <div className="app-container">
       <div className="app-content">
         <div className="slider-container">
-          <h1 className="slider-title">Image Groove Slider</h1>
+          <h1 className="slider-title">Groove Gallery</h1>
           
           {stories.length === 0 ? (
             <EmptyState onFileUpload={handleFileUpload} />
@@ -969,19 +1030,21 @@ const handleDelete = (index) => {
             </div>
           )}
 
-          <BottomMenu 
-            onFileUpload={handleFileUpload}
-            onSaveSession={() => setShowExportModal(true)}
-            onPlayPause={handlePlayPause}
-            isPlaying={isPlaying}
-            duration={duration}
-            onDurationChange={setDuration}
-            onEdit={() => setShowEditPanel(true)}
-            onMusicUpload={handleMusicUpload}
-            onBPMChange={handleBPMChange}
-            musicUrl={musicUrl}
-            currentBPM={bpm}
-          />
+<BottomMenu 
+    onFileUpload={handleFileUpload}
+    onSaveSession={() => setShowExportModal(true)}
+    onPlayPause={handlePlayPause}
+    isPlaying={isPlaying}
+    duration={duration}
+    onDurationChange={setDuration}
+    onEdit={() => setShowEditPanel(true)}
+    onMusicUpload={handleMusicUpload}
+    onBPMChange={handleBPMChange}
+    musicUrl={musicUrl}
+    bpm={bpm}
+    onStartPointChange={setMusicStartPoint}
+    musicStartPoint={musicStartPoint}
+  />
 
           {showEditPanel && (
             <EditPanel
