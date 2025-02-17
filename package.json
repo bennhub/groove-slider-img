@@ -7,20 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "cap:init": "cap init",
-    "cap:sync": "cap sync",
-    "cap:build": "vite build && cap sync",
-    "cap:android": "cap open android",
-    "cap:ios": "cap open ios"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor/android": "^7.0.1",
-    "@capacitor/cli": "^7.0.1",
-    "@capacitor/core": "^7.0.1",
-    "@capacitor/filesystem": "^7.0.0",
-    "@capacitor/ios": "^7.0.1",
-    "@capawesome/capacitor-file-picker": "^7.0.1",
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",

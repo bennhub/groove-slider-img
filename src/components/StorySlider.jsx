@@ -21,44 +21,45 @@ import {
 import { motion, useAnimation, AnimatePresence } from 'framer-motion';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
-import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory } from '@capacitor/filesystem';
 
 //==============================================
 // UTILITIES / SERVICES
 //==============================================
 const ffmpeg = new FFmpeg({
   log: true,
-  corePath: Capacitor.isNativePlatform() 
-    ? '/public/ffmpeg/ffmpeg-core.js'
-    : 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js',
-  wasmPath: Capacitor.isNativePlatform()
-    ? '/public/ffmpeg/ffmpeg-core.wasm'
-    : 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.wasm'
+  corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js',
+  wasmPath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.wasm'
 });
 
 // Add this function right after the ffmpeg configuration
 const loadFFmpeg = async () => {
   try {
     console.log('Starting FFmpeg load...');
-    if (Capacitor.isNativePlatform()) {
-      console.log('Loading in mobile environment');
-      await ffmpeg.load({
-        coreURL: './public/ffmpeg/ffmpeg-core.js',
-        wasmURL: './public/ffmpeg/ffmpeg-core.wasm'
-      });
-    } else {
-      console.log('Loading in web environment');
-      await ffmpeg.load();
-    }
+    
+    // Explicitly set full URLs for core and wasm
+    await ffmpeg.load({
+      corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/ffmpeg-core.js',
+      wasmPath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/ffmpeg-core.wasm'
+  
+    });
+    
     console.log('FFmpeg loaded successfully');
   } catch (error) {
-    console.error('FFmpeg load error:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
-      cause: error.cause
-    });
+    console.error('FFmpeg load error:', error);
+    
+    // More detailed error logging
+    if (error instanceof Error) {
+      console.error({
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        cause: error.cause
+      });
+    }
+    
+    // Optionally, show a user-friendly error
+    alert('Failed to load FFmpeg. Please check your internet connection.');
+    
     throw error;
   }
 };
@@ -898,33 +899,36 @@ const handleDelete = (index) => {
 
   // Export functionality
   const handleSaveSession = async (resolution = '1080x1920') => {
-    setIsExporting(true);
-    let tempFiles = [];
-
     try {
+      // 🔹 Prompt user for where to save (BEFORE starting processing)
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: 'slideshow.mp4',
+        types: [{ description: 'MP4 Video', accept: { 'video/mp4': ['.mp4'] } }]
+      });
+  
+      setIsExporting(true);
       setShowProgress(true);
       setProgressMessage('Preparing to export video...');
       setSaveProgress(0);
-
+  
       if (!ffmpeg.loaded) {
         await loadFFmpeg();
       }
-
+  
+      let tempFiles = [];
       const processedFiles = [];
       const [width, height] = resolution.split('x').map(Number);
-
-      // Process each image
+  
+      // 🔹 Process Images into Video Segments
       for (let i = 0; i < stories.length; i++) {
         const story = stories[i];
         setProgressMessage(`Processing image ${i + 1}/${stories.length}`);
-        
         const inputName = `input${i}.png`;
         const outputName = `processed${i}.mp4`;
-        
+  
         await ffmpeg.writeFile(inputName, await fetchFile(story.url));
         tempFiles.push(inputName);
-        
-        // Convert image to video segment
+  
         await ffmpeg.exec([
           '-loop', '1',
           '-i', inputName,
@@ -936,121 +940,73 @@ const handleDelete = (index) => {
           '-preset', 'ultrafast',
           outputName
         ]);
-
+  
         tempFiles.push(outputName);
         processedFiles.push({ name: outputName });
-        setSaveProgress((i + 1) / stories.length * 75);
+        setSaveProgress(((i + 1) / stories.length) * 75);
       }
-
-      // Create concat file
-      const fileList = processedFiles.map(file => `file '${file.name}'`).join('\n');
-      await ffmpeg.writeFile('list.txt', fileList);
+  
+      // 🔹 Concatenate All Videos
+      await ffmpeg.writeFile('list.txt', processedFiles.map(f => `file '${f.name}'`).join('\n'));
       tempFiles.push('list.txt');
-      
+  
       setProgressMessage('Creating final video...');
       setSaveProgress(85);
-
-      // Concatenate all images
-      await ffmpeg.exec([
-        '-f', 'concat',
-        '-safe', '0',
-        '-i', 'list.txt',
-        '-c:v', 'copy',
-        'temp_output.mp4'
-      ]);
+  
+      await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c:v', 'copy', 'temp_output.mp4']);
       tempFiles.push('temp_output.mp4');
-
-      // Add background music if present
+  
+      // 🔹 Add Background Music If Needed
       if (musicUrl) {
         setProgressMessage('Adding background music...');
-        
         try {
-          // Write background music file
           await ffmpeg.writeFile('background.mp3', await fetchFile(musicUrl));
-          
-          // Simpler audio mixing command
           await ffmpeg.exec([
-            '-i', 'temp_output.mp4',  // Video without audio
-            '-stream_loop', '-1',     // Loop the audio
-            '-i', 'background.mp3',   // Background music
-            '-shortest',              // Match the video length
-            '-map', '0:v',           // Take video from first input
-            '-map', '1:a',           // Take audio from second input
-            '-c:v', 'copy',          // Copy video codec
-            '-c:a', 'aac',           // Audio codec
-            '-b:a', '192k',          // Audio bitrate
+            '-i', 'temp_output.mp4',
+            '-i', 'background.mp3',
+            '-shortest',
+            '-map', '0:v',
+            '-map', '1:a',
+            '-c:v', 'copy',
+            '-c:a', 'aac',
+            '-b:a', '192k',
             'final_output.mp4'
           ]);
-      
+  
           await ffmpeg.deleteFile('background.mp3');
           await ffmpeg.deleteFile('temp_output.mp4');
         } catch (error) {
-          console.error('Background music error:', error);
-          // If background music fails, just use the video without music
-          await ffmpeg.exec([
-            '-i', 'temp_output.mp4',
-            '-c', 'copy',
-            'final_output.mp4'
-          ]);
+          console.error('Music error:', error);
+          await ffmpeg.exec(['-i', 'temp_output.mp4', '-c', 'copy', 'final_output.mp4']);
         }
       } else {
-        // If no background music, just rename temp to final
-        await ffmpeg.exec([
-          '-i', 'temp_output.mp4',
-          '-c', 'copy',
-          'final_output.mp4'
-        ]);
+        await ffmpeg.exec(['-i', 'temp_output.mp4', '-c', 'copy', 'final_output.mp4']);
       }
-
+  
       setProgressMessage('Preparing download...');
       setSaveProgress(95);
-      
+  
+      // 🔹 Read Final File
       const data = await ffmpeg.readFile('final_output.mp4');
       setSaveProgress(100);
-
-      // Handle download based on platform
-      if (Capacitor.isNativePlatform()) {
-        const fileName = `slideshow_${Date.now()}.mp4`;
-        await Filesystem.writeFile({
-          path: fileName,
-          data: data.buffer,
-          directory: Directory.Documents
-        });
-        alert(`Video saved as ${fileName}`);
-      } else {
-        const videoUrl = URL.createObjectURL(
-          new Blob([data.buffer], { type: 'video/mp4' })
-        );
-        const a = document.createElement('a');
-        a.href = videoUrl;
-        a.download = 'slideshow.mp4';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(videoUrl);
-      }
-
+  
+      // 🔹 Save the File (Now Safe to Use the File Handle)
+      const writable = await fileHandle.createWritable();
+      await writable.write(new Blob([data.buffer], { type: 'video/mp4' }));
+      await writable.close();
+  
       setShowProgress(false);
       setIsExporting(false);
       alert('Export completed!');
-
+  
     } catch (error) {
       console.error('Export error:', error);
       setShowProgress(false);
       setIsExporting(false);
       alert(`Export failed: ${error.message}`);
-    } finally {
-      // Cleanup temp files
-      for (const file of tempFiles) {
-        try {
-          await ffmpeg.deleteFile(file);
-        } catch (e) {
-          console.log(`Failed to delete: ${file}`);
-        }
-      }
     }
   };
-
+  
   // Render logic
   return (
     <div className="app-container">
