@@ -7,7 +7,7 @@ import App from './App.jsx';
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js', {
+      const registration = await navigator.serviceWorker.register('/groove-slider-img/sw.js', {
         scope: '/',
         type: 'classic',
         updateViaCache: 'none'
