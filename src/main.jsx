@@ -8,7 +8,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
       const registration = await navigator.serviceWorker.register('./groove-slider-img/sw.js', {
-        scope: '/groove-slider-img/',
+        scope: './groove-slider-img/',
         type: 'classic',
         updateViaCache: 'none'
       });
