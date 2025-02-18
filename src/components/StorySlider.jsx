@@ -900,11 +900,35 @@ const handleDelete = (index) => {
   // Export functionality
   const handleSaveSession = async (resolution = '1080x1920') => {
     try {
-      // 🔹 Prompt user for where to save (BEFORE starting processing)
-      const fileHandle = await window.showSaveFilePicker({
-        suggestedName: 'slideshow.mp4',
-        types: [{ description: 'MP4 Video', accept: { 'video/mp4': ['.mp4'] } }]
-      });
+      let fileHandle;
+      let fileName = 'slideshow.mp4';
+      
+      // Check if we're on mobile/unsupported browser
+      if (!('showSaveFilePicker' in window)) {
+        // Mobile fallback - file will download automatically
+        // Create a temporary anchor element
+        const link = document.createElement('a');
+        link.download = fileName;
+        fileHandle = {
+          createWritable: async () => {
+            return {
+              write: async (data) => {
+                const url = URL.createObjectURL(new Blob([data], { type: 'video/mp4' }));
+                link.href = url;
+                link.click();
+                URL.revokeObjectURL(url);
+              },
+              close: async () => {}
+            };
+          }
+        };
+      } else {
+        // Desktop - use file picker
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: fileName,
+          types: [{ description: 'MP4 Video', accept: { 'video/mp4': ['.mp4'] } }]
+        });
+      }
   
       setIsExporting(true);
       setShowProgress(true);
