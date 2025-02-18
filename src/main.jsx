@@ -7,14 +7,20 @@ import App from './App.jsx';
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      const registration = await navigator.serviceWorker.register('./groove-slider-img/sw.js', {
+      console.log('Attempting to register service worker');
+      console.log('Current origin:', window.location.origin);
+      console.log('Current pathname:', window.location.pathname);
+
+      const registration = await navigator.serviceWorker.register('/groove-slider-img/sw.js', {
         scope: '/groove-slider-img/',
-        type: 'classic',
-        updateViaCache: 'none'
+        type: 'classic'
       });
-      console.log('Service Worker registered successfully:', registration.scope);
+      
+      console.log('Service Worker registered successfully:', registration);
+      console.log('Registration scope:', registration.scope);
     } catch (error) {
       console.error('Service Worker registration failed:', error);
+      console.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     }
   });
 }
