@@ -39,12 +39,13 @@ jobs:
       - name: ⚙️ Setup Pages
         uses: actions/configure-pages@v4
         with:
-          enablement: true  # Add this line
+          enablement: true
 
       - name: 📦 Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: dist  # Changed from './dist' to 'dist'
+          name: github-pages  # Add this line to specify the artifact name
 
   deploy:
     name: 🚀 Deploy
@@ -56,3 +57,5 @@ jobs:
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v3
+        with:
+          artifact_name: github-pages  # Add this line to match the upload name
