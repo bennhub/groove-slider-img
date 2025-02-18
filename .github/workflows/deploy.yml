@@ -2,13 +2,8 @@ name: 🚀 Deploy to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -16,46 +11,35 @@ permissions:
   id-token: write
 
 jobs:
-  build:
-    name: 🏗️ Build
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: ⬇️ Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: ⎔ Setup node
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          cache: npm
-          cache-dependency-path: ./package.json
           node-version: 18
+          cache: 'npm'
 
-      - name: 📥 Install deps
+      - name: Install dependencies
         run: npm install
 
-      - name: 🏗️ Build project
+      - name: Build
         run: npm run build
 
-      - name: ⚙️ Setup Pages
+      - name: Setup Pages
         uses: actions/configure-pages@v4
-        with:
-          enablement: true
 
-      - name: 📦 Upload artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist  # Changed from './dist' to 'dist'
-          name: github-pages  # Add this line to specify the artifact name
+          path: './dist'
 
-  deploy:
-    name: 🚀 Deploy
-    needs: [build]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-      - name: 🚀 Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v3
-        with:
-          artifact_name: github-pages  # Add this line to match the upload name
