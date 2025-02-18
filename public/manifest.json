@@ -2,7 +2,7 @@
     "name": "Groove Gallery",
     "short_name": "GrooveGal",
     "description": "Create dynamic image slideshows synced to music",
-    "start_url": "/groove-slider-img/",
+    "start_url": "./groove-slider-img/",
     "display": "standalone",
     "background_color": "#000000",
     "theme_color": "#000000",
