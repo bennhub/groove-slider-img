@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: './groove-slider-img/',
+  base: '/groove-slider-img/',
   server: {
     host: true,
     headers: {
