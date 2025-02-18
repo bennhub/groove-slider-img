@@ -1036,7 +1036,7 @@ const handleDelete = (index) => {
     <div className="app-container">
     <div className="app-content">
       <div className="slider-container">
-        <h1 className="slider-title">Groove Gallery</h1>
+        <h1 className="slider-title">Groove Gallery #2</h1>
         
         {stories.length === 0 ? (
           <EmptyState onFileUpload={handleFileUpload} />
