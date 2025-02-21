@@ -7,7 +7,8 @@ export default defineConfig({
   base: '/groove-slider-img/',
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src')
+      '@': path.resolve(__dirname, 'src'),
+      '/src': path.resolve(__dirname, 'src')  // Add this line
     }
   },
   server: {
@@ -26,7 +27,9 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     rollupOptions: {
-      input: path.resolve(__dirname, 'index.html'),
+      input: {
+        main: path.resolve(__dirname, 'index.html')  // Changed this line
+      },
       output: {
         manualChunks: {
           ffmpeg: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
