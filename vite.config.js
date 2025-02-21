@@ -16,7 +16,8 @@ export default defineConfig({
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Service-Worker-Allowed': '/'
+      'Service-Worker-Allowed': '/',
+      'Access-Control-Allow-Origin': '*' 
     }
   },
   optimizeDeps: {
