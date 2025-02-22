@@ -1046,6 +1046,8 @@ const StorySlider = () => {
           await ffmpeg.exec([
             "-i",
             "temp_output.mp4",
+            "-ss", 
+            String(musicStartPoint),
             "-i",
             "background.mp3",
             "-shortest",
