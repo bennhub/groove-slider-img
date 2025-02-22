@@ -1,65 +1,66 @@
 //==============================================
 // IMPORTS
 //==============================================
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  PlusCircle, 
-  X, 
-  Save, 
-  Loader, 
-  ImagePlus, 
-  Clock, 
-  Play, 
-  Pause, 
-  Edit, 
-  Share, 
-  Download, 
-  Music 
-} from 'lucide-react';
-import { motion, useAnimation, AnimatePresence } from 'framer-motion';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  PlusCircle,
+  X,
+  Save,
+  Loader,
+  ImagePlus,
+  Clock,
+  Play,
+  Pause,
+  Edit,
+  Share,
+  Download,
+  Music,
+} from "lucide-react";
+//import { motion, useAnimation, AnimatePresence } from 'framer-motion';
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { fetchFile } from "@ffmpeg/util";
 
 //==============================================
 // UTILITIES / SERVICES
 //==============================================
 const ffmpeg = new FFmpeg({
   log: true,
-  corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js',
-  wasmPath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.wasm'
+  corePath: "https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js",
+  wasmPath: "https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.wasm",
 });
 
 // Add this function right after the ffmpeg configuration
 const loadFFmpeg = async () => {
   try {
-    console.log('Starting FFmpeg load...');
-    
+    console.log("Starting FFmpeg load...");
+
     // Explicitly set full URLs for core and wasm
     await ffmpeg.load({
-      corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/ffmpeg-core.js',
-      wasmPath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/ffmpeg-core.wasm'
-  
+      corePath:
+        "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/ffmpeg-core.js",
+      wasmPath:
+        "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/ffmpeg-core.wasm",
     });
-    
-    console.log('FFmpeg loaded successfully');
+
+    console.log("FFmpeg loaded successfully");
   } catch (error) {
-    console.error('FFmpeg load error:', error);
-    
+    console.error("FFmpeg load error:", error);
+
     // More detailed error logging
     if (error instanceof Error) {
       console.error({
         message: error.message,
         name: error.name,
         stack: error.stack,
-        cause: error.cause
+        cause: error.cause,
       });
     }
-    
+
     // Optionally, show a user-friendly error
-    alert('Failed to load FFmpeg. Please check your internet connection.');
-    
+    alert("Failed to load FFmpeg. Please check your internet connection.");
+
     throw error;
   }
 };
@@ -80,9 +81,10 @@ const TapTempo = ({ onBPMChange }) => {
       for (let i = 1; i < newTaps.length; i++) {
         intervals.push(newTaps[i] - newTaps[i - 1]);
       }
-      const averageInterval = intervals.reduce((a, b) => a + b) / intervals.length;
+      const averageInterval =
+        intervals.reduce((a, b) => a + b) / intervals.length;
       const bpm = Math.round(60000 / averageInterval);
-      
+
       if (bpm >= 60 && bpm <= 180) {
         setCurrentBPM(bpm);
         onBPMChange(bpm);
@@ -101,11 +103,8 @@ const TapTempo = ({ onBPMChange }) => {
 
   return (
     <div className="tap-tempo">
-      <button 
-        onClick={handleTap}
-        className="tap-button"
-      >
-        Tap Tempo: {currentBPM > 0 ? `${currentBPM} BPM` : 'Tap to rhythm'}
+      <button onClick={handleTap} className="tap-button">
+        Tap Tempo: {currentBPM > 0 ? `${currentBPM} BPM` : "Tap to rhythm"}
       </button>
     </div>
   );
@@ -114,7 +113,12 @@ const TapTempo = ({ onBPMChange }) => {
 //==============================================
 // MUSIC PANEL COMPONENT
 //==============================================
-const MusicPanel = ({ onUpload, onBPMChange, currentBPM, onStartPointChange }) => {
+const MusicPanel = ({
+  onUpload,
+  onBPMChange,
+  currentBPM,
+  onStartPointChange,
+}) => {
   const audioRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [startPoint, setStartPoint] = useState(0);
@@ -149,7 +153,7 @@ const MusicPanel = ({ onUpload, onBPMChange, currentBPM, onStartPointChange }) =
   const formatTime = (timeInSeconds) => {
     const minutes = Math.floor(timeInSeconds / 60);
     const seconds = Math.floor(timeInSeconds % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -177,7 +181,7 @@ const MusicPanel = ({ onUpload, onBPMChange, currentBPM, onStartPointChange }) =
             />
           </label>
         </div>
-        
+
         <div className="bpm-control">
           <TapTempo onBPMChange={onBPMChange} />
           <div className="manual-bpm">
@@ -194,11 +198,7 @@ const MusicPanel = ({ onUpload, onBPMChange, currentBPM, onStartPointChange }) =
         </div>
 
         <div className="music-player">
-          <audio 
-            ref={audioRef}
-            controls
-            onTimeUpdate={handleTimeUpdate}
-          />
+          <audio ref={audioRef} controls onTimeUpdate={handleTimeUpdate} />
           <div className="start-point-controls">
             <div className="time-display">
               Current Time: {formatTime(currentTime)}
@@ -206,7 +206,7 @@ const MusicPanel = ({ onUpload, onBPMChange, currentBPM, onStartPointChange }) =
             <div className="start-point-display">
               Start Point: {formatTime(startPoint)}
             </div>
-            <button 
+            <button
               className="set-start-point-button"
               onClick={handleSetStartPoint}
             >
@@ -228,7 +228,7 @@ const ProgressBar = ({ currentIndex, totalSlides, onProgressClick }) => {
       {[...Array(totalSlides)].map((_, index) => (
         <div
           key={index}
-          className={`progress-bar ${index === currentIndex ? 'active' : ''}`}
+          className={`progress-bar ${index === currentIndex ? "active" : ""}`}
           onClick={() => onProgressClick(index)}
         />
       ))}
@@ -239,7 +239,12 @@ const ProgressBar = ({ currentIndex, totalSlides, onProgressClick }) => {
 //==============================================
 // NAVIGATION BUTTONS
 //==============================================
-const NavigationButtons = ({ onPrevious, onNext, isFirstSlide, isLastSlide }) => {
+const NavigationButtons = ({
+  onPrevious,
+  onNext,
+  isFirstSlide,
+  isLastSlide,
+}) => {
   return (
     <>
       <button
@@ -299,12 +304,12 @@ const ProgressModal = ({ isOpen, progress, message }) => {
         <div className="loading-container">
           <h3 className="progress-title">{message}</h3>
           <div className="progress-bar-container">
-            <div 
-              className="progress-bar-fill" 
-              style={{ 
+            <div
+              className="progress-bar-fill"
+              style={{
                 width: `${progress || 0}%`,
-                transition: 'width 0.3s ease-in-out'
-              }} 
+                transition: "width 0.3s ease-in-out",
+              }}
             />
           </div>
           <div className="progress-percentage">
@@ -320,7 +325,7 @@ const ProgressModal = ({ isOpen, progress, message }) => {
 // Caption Modal
 //--------------------------------------------
 const CaptionModal = ({ isOpen, onClose, onSubmit, fileName }) => {
-  const [caption, setCaption] = useState('');
+  const [caption, setCaption] = useState("");
 
   if (!isOpen) return null;
 
@@ -344,8 +349,8 @@ const CaptionModal = ({ isOpen, onClose, onSubmit, fileName }) => {
           <button className="modal-button cancel" onClick={onClose}>
             Skip
           </button>
-          <button 
-            className="modal-button submit" 
+          <button
+            className="modal-button submit"
             onClick={() => onSubmit(caption)}
           >
             Add Caption
@@ -359,15 +364,15 @@ const CaptionModal = ({ isOpen, onClose, onSubmit, fileName }) => {
 //--------------------------------------------
 // Export Modal
 //--------------------------------------------
-const ExportModal = ({ 
-  isOpen, 
-  progress, 
-  message, 
+const ExportModal = ({
+  isOpen,
+  progress,
+  message,
   onClose,
   onExport,
-  isExporting 
+  isExporting,
 }) => {
-  const [resolution, setResolution] = useState('1080x1920');
+  const [resolution, setResolution] = useState("1080x1920");
 
   if (!isOpen) return null;
 
@@ -380,11 +385,11 @@ const ExportModal = ({
         {!isExporting ? (
           <>
             <h3 className="modal-title">Export Settings</h3>
-            
+
             <div className="resolution-selector">
               <label>Resolution:</label>
-              <select 
-                value={resolution} 
+              <select
+                value={resolution}
                 onChange={(e) => setResolution(e.target.value)}
                 className="resolution-select"
               >
@@ -395,15 +400,17 @@ const ExportModal = ({
             </div>
 
             <div className="export-actions">
-              <button 
+              <button
                 className="action-button share"
-                onClick={() => {/* Share logic */}}
+                onClick={() => {
+                  /* Share logic */
+                }}
               >
                 <Share className="button-icon" />
                 Share
               </button>
-              
-              <button 
+
+              <button
                 className="action-button download"
                 onClick={() => onExport(resolution)}
               >
@@ -418,7 +425,7 @@ const ExportModal = ({
             <p>{message}</p>
             <div className="progress-container">
               <div className="progress-bar">
-                <div 
+                <div
                   className="progress-fill"
                   style={{ width: `${progress}%` }}
                 />
@@ -437,24 +444,24 @@ const ExportModal = ({
 //--------------------------------------------
 const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
   const handleDragStart = (e, index) => {
-    e.dataTransfer.setData('text/plain', String(index));
+    e.dataTransfer.setData("text/plain", String(index));
   };
- 
+
   const handleDragOver = (e) => {
     e.preventDefault();
   };
- 
+
   const handleDrop = (e, dropIndex) => {
     e.preventDefault();
-    const dragIndex = Number(e.dataTransfer.getData('text/plain'));
+    const dragIndex = Number(e.dataTransfer.getData("text/plain"));
     if (dragIndex === dropIndex) return;
- 
+
     const newStories = [...stories];
     const [movedItem] = newStories.splice(dragIndex, 1);
     newStories.splice(dropIndex, 0, movedItem);
     onReorder(newStories);
   };
- 
+
   return (
     <div className="edit-panel">
       <div className="edit-panel-header">
@@ -474,7 +481,7 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
             className="thumbnail"
           >
             <div className="thumbnail-content">
-              <button 
+              <button
                 className="delete-button"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -488,10 +495,9 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
               </div>
             </div>
             <div className="thumbnail-caption">
-              {story.caption.length > 20 
-                ? `${story.caption.substring(0, 20)}...` 
-                : story.caption
-              }
+              {story.caption.length > 20
+                ? `${story.caption.substring(0, 20)}...`
+                : story.caption}
             </div>
           </div>
         ))}
@@ -503,20 +509,20 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
 //==============================================
 // BOTTOM MENU COMPONENT
 //==============================================
-const BottomMenu = ({ 
-  onFileUpload, 
-  onSaveSession, 
-  onPlayPause, 
-  isPlaying, 
-  duration, 
-  onDurationChange, 
+const BottomMenu = ({
+  onFileUpload,
+  onSaveSession,
+  onPlayPause,
+  isPlaying,
+  duration,
+  onDurationChange,
   onEdit,
   onMusicUpload,
   onBPMChange,
   musicUrl,
   bpm,
   onStartPointChange,
-  musicStartPoint
+  musicStartPoint,
 }) => {
   const [showDurationPanel, setShowDurationPanel] = useState(false);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
@@ -537,16 +543,16 @@ const BottomMenu = ({
   };
 
   const barOptions = [
-    { value: 0.125, label: '⅛ Bar' },  
-    { value: 0.25, label: '¼ Bar' },   
-    { value: 0.5, label: '½ Bar' },
-    { value: 1, label: '1 Bar' },
-    { value: 2, label: '2 Bars' },
-    { value: 4, label: '4 Bars' },
-    { value: 8, label: '8 Bars' },
-    { value: 16, label: '16 Bars' }
+    { value: 0.125, label: "⅛ Bar" },
+    { value: 0.25, label: "¼ Bar" },
+    { value: 0.5, label: "½ Bar" },
+    { value: 1, label: "1 Bar" },
+    { value: 2, label: "2 Bars" },
+    { value: 4, label: "4 Bars" },
+    { value: 8, label: "8 Bars" },
+    { value: 16, label: "16 Bars" },
   ];
- 
+
   return (
     <div className="bottom-menu">
       {showDurationPanel && (
@@ -555,18 +561,20 @@ const BottomMenu = ({
             <h3>Slide Duration</h3>
             <div className="bar-options">
               {[
-                { value: 0.125, label: '⅛ Bar' }, 
-                { value: 0.25, label: '¼ Bar' },
-                { value: 0.5, label: '½ Bar' },
-                { value: 1, label: '1 Bar' },
-                { value: 2, label: '2 Bars' },
-                { value: 4, label: '4 Bars' },
-                { value: 8, label: '8 Bars' },
-                { value: 16, label: '16 Bars' }
+                { value: 0.125, label: "⅛ Bar" },
+                { value: 0.25, label: "¼ Bar" },
+                { value: 0.5, label: "½ Bar" },
+                { value: 1, label: "1 Bar" },
+                { value: 2, label: "2 Bars" },
+                { value: 4, label: "4 Bars" },
+                { value: 8, label: "8 Bars" },
+                { value: 16, label: "16 Bars" },
               ].map((option) => (
                 <button
                   key={option.value}
-                  className={`bar-option ${selectedBar === option.value ? 'selected' : ''}`}
+                  className={`bar-option ${
+                    selectedBar === option.value ? "selected" : ""
+                  }`}
                   onClick={() => {
                     const newDuration = (option.value * 4 * 60) / bpm;
                     setSelectedBar(option.value);
@@ -584,7 +592,7 @@ const BottomMenu = ({
           </div>
         </div>
       )}
-      
+
       {showMusicPanel && (
         <MusicPanel
           onUpload={onMusicUpload}
@@ -595,9 +603,9 @@ const BottomMenu = ({
           musicUrl={musicUrl}
         />
       )}
-      
+
       <div className="bottom-menu-buttons">
-        <button 
+        <button
           className="bottom-menu-button"
           onClick={() => {
             setShowDurationPanel(!showDurationPanel);
@@ -608,7 +616,7 @@ const BottomMenu = ({
           <span className="bottom-menu-text">Speed</span>
         </button>
 
-        <button 
+        <button
           className="bottom-menu-button"
           onClick={() => {
             setShowMusicPanel(!showMusicPanel);
@@ -619,23 +627,19 @@ const BottomMenu = ({
           <span className="bottom-menu-text">Music</span>
         </button>
 
-        <button 
-          className="bottom-menu-button"
-          onClick={onPlayPause}
-        >
+        <button className="bottom-menu-button" onClick={onPlayPause}>
           {isPlaying ? (
             <Pause className="bottom-menu-icon" />
           ) : (
             <Play className="bottom-menu-icon" />
           )}
-          <span className="bottom-menu-text">{isPlaying ? 'Pause' : 'Play'}</span>
+          <span className="bottom-menu-text">
+            {isPlaying ? "Pause" : "Play"}
+          </span>
         </button>
 
         <div className="bottom-menu-right-group">
-          <button 
-            className="bottom-menu-button"
-            onClick={onEdit}
-          >
+          <button className="bottom-menu-button" onClick={onEdit}>
             <Edit className="bottom-menu-icon" />
             <span className="bottom-menu-text">Edit</span>
           </button>
@@ -672,19 +676,19 @@ const StorySlider = () => {
   const [stories, setStories] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(2);
-  
+
   // UI State
   const [modalOpen, setModalOpen] = useState(false);
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [currentFile, setCurrentFile] = useState(null);
-  
+
   // Export State
   const [isExporting, setIsExporting] = useState(false);
   const [saveProgress, setSaveProgress] = useState(null);
-  const [progressMessage, setProgressMessage] = useState('');
+  const [progressMessage, setProgressMessage] = useState("");
   const [showProgress, setShowProgress] = useState(false);
-  
+
   // Music State
   const [musicUrl, setMusicUrl] = useState(null);
   const [bpm, setBpm] = useState(120);
@@ -692,7 +696,7 @@ const StorySlider = () => {
 
   // Image Preload
   const [preloadedImages, setPreloadedImages] = useState({});
-  
+
   // Touch State
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -700,8 +704,7 @@ const StorySlider = () => {
   // Refs
   const musicRef = useRef(null);
   const intervalRef = useRef(null);
-  const controls = useAnimation();
-
+  
   // Image Preload
   const preloadImage = (url) => {
     return new Promise((resolve, reject) => {
@@ -711,31 +714,31 @@ const StorySlider = () => {
       img.src = url;
     });
   };
-  
+
   // Add this useEffect to preload adjacent images
   useEffect(() => {
     const preloadAdjacentImages = async () => {
       const indicesToPreload = [
         currentIndex - 1,
         currentIndex,
-        currentIndex + 1
-      ].filter(index => index >= 0 && index < stories.length);
-  
+        currentIndex + 1,
+      ].filter((index) => index >= 0 && index < stories.length);
+
       for (const index of indicesToPreload) {
         if (!preloadedImages[stories[index].url]) {
           try {
             await preloadImage(stories[index].url);
-            setPreloadedImages(prev => ({
+            setPreloadedImages((prev) => ({
               ...prev,
-              [stories[index].url]: true
+              [stories[index].url]: true,
             }));
           } catch (error) {
-            console.error('Failed to preload image:', error);
+            console.error("Failed to preload image:", error);
           }
         }
       }
     };
-  
+
     if (stories.length > 0) {
       preloadAdjacentImages();
     }
@@ -748,29 +751,31 @@ const StorySlider = () => {
 
   // Handle file uploads
   const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files).filter(file => 
-      file.type.startsWith('image/')
+    const files = Array.from(event.target.files).filter((file) =>
+      file.type.startsWith("image/")
     );
 
     if (files.length === 0) {
-      alert('Please select image files only.');
+      alert("Please select image files only.");
       return;
     }
 
-    const newStories = files.map(file => {
+    const newStories = files.map((file) => {
       const url = URL.createObjectURL(file);
-      const wantCaption = window.confirm('Would you like to add a caption?');
-      const caption = wantCaption ? prompt("Add a caption:", file.name) || file.name : file.name;
-      
+      const wantCaption = window.confirm("Would you like to add a caption?");
+      const caption = wantCaption
+        ? prompt("Add a caption:", file.name) || file.name
+        : file.name;
+
       return {
-        type: 'image',
+        type: "image",
         url,
-        caption
+        caption,
       };
     });
 
-    setStories(prevStories => [...prevStories, ...newStories]);
-    event.target.value = '';
+    setStories((prevStories) => [...prevStories, ...newStories]);
+    event.target.value = "";
   };
 
   // Music handlers
@@ -791,7 +796,7 @@ const StorySlider = () => {
   // Playback control
   const startAutoRotation = () => {
     intervalRef.current = setInterval(() => {
-      setCurrentIndex(prevIndex => {
+      setCurrentIndex((prevIndex) => {
         if (prevIndex >= stories.length - 1) return 0;
         return prevIndex + 1;
       });
@@ -817,7 +822,7 @@ const StorySlider = () => {
       startAutoRotation();
       if (musicRef.current) {
         musicRef.current.currentTime = musicStartPoint; // Use the stored start point
-        musicRef.current.play().catch(err => console.log('Play error:', err));
+        musicRef.current.play().catch((err) => console.log("Play error:", err));
       }
     }
     setIsPlaying((prev) => !prev);
@@ -836,26 +841,20 @@ const StorySlider = () => {
     }
   }, [duration]);
 
-//==============================================
-// STORY SLIDER COMPONENT - Render & Export Logic
-//==============================================
+  //==============================================
+  // STORY SLIDER COMPONENT - Render & Export Logic
+  //==============================================
 
   // Navigation handlers
-  const handleNext = async () => {
+  const handleNext = () => {
     if (currentIndex < stories.length - 1) {
-      await controls.start({ opacity: 1 }, { duration: 0.5 });
       setCurrentIndex(currentIndex + 1);
-      controls.set({ opacity: 0 });
-      await controls.start({ opacity: 1 }, { duration: 0.5 });
     }
   };
-  
-  const handlePrevious = async () => {
+
+  const handlePrevious = () => {
     if (currentIndex > 0) {
-      await controls.start({ opacity: 1 }, { duration: 0.5 });
       setCurrentIndex(currentIndex - 1);
-      controls.set({ opacity: 0 });
-      await controls.start({ opacity: 1 }, { duration: 0.5 });
     }
   };
 
@@ -876,228 +875,254 @@ const StorySlider = () => {
     setTouchEnd(null);
   };
 
-
   // Handle Reorder
-const handleReorder = (newStories) => {
-  // Force stop any playback
-  stopAutoRotation();
-  setIsPlaying(false);
-  
-  // Update state synchronously
-  setCurrentIndex(0); // Reset to first position
-  setStories(newStories);
-};
+  const handleReorder = (newStories) => {
+    // Force stop any playback
+    stopAutoRotation();
+    setIsPlaying(false);
 
-// Hande Delete
-const handleDelete = (index) => {
-  const newStories = stories.filter((_, i) => i !== index);
-  setStories(newStories);
-  if (currentIndex >= index) {
-    setCurrentIndex(Math.max(0, currentIndex - 1));
-  }
-};
+    // Update state synchronously
+    setCurrentIndex(0); // Reset to first position
+    setStories(newStories);
+  };
+
+  // Hande Delete
+  const handleDelete = (index) => {
+    const newStories = stories.filter((_, i) => i !== index);
+    setStories(newStories);
+    if (currentIndex >= index) {
+      setCurrentIndex(Math.max(0, currentIndex - 1));
+    }
+  };
 
   // Export functionality
-  const handleSaveSession = async (resolution = '1080x1920') => {
+  const handleSaveSession = async (resolution = "1080x1920") => {
     try {
       let fileHandle;
-      let fileName = 'slideshow.mp4';
-      
+      let fileName = "slideshow.mp4";
+
       // Check if we're on mobile/unsupported browser
-      if (!('showSaveFilePicker' in window)) {
+      if (!("showSaveFilePicker" in window)) {
         // Mobile fallback - file will download automatically
         // Create a temporary anchor element
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.download = fileName;
         fileHandle = {
           createWritable: async () => {
             return {
               write: async (data) => {
-                const url = URL.createObjectURL(new Blob([data], { type: 'video/mp4' }));
+                const url = URL.createObjectURL(
+                  new Blob([data], { type: "video/mp4" })
+                );
                 link.href = url;
                 link.click();
                 URL.revokeObjectURL(url);
               },
-              close: async () => {}
+              close: async () => {},
             };
-          }
+          },
         };
       } else {
         // Desktop - use file picker
         fileHandle = await window.showSaveFilePicker({
           suggestedName: fileName,
-          types: [{ description: 'MP4 Video', accept: { 'video/mp4': ['.mp4'] } }]
+          types: [
+            { description: "MP4 Video", accept: { "video/mp4": [".mp4"] } },
+          ],
         });
       }
-  
+
       setIsExporting(true);
       setShowProgress(true);
-      setProgressMessage('Preparing to export video...');
+      setProgressMessage("Preparing to export video...");
       setSaveProgress(0);
-  
+
       if (!ffmpeg.loaded) {
         await loadFFmpeg();
       }
-  
+
       let tempFiles = [];
       const processedFiles = [];
-      const [width, height] = resolution.split('x').map(Number);
-  
+      const [width, height] = resolution.split("x").map(Number);
+
       // 🔹 Process Images into Video Segments
       for (let i = 0; i < stories.length; i++) {
         const story = stories[i];
         setProgressMessage(`Processing image ${i + 1}/${stories.length}`);
         const inputName = `input${i}.png`;
         const outputName = `processed${i}.mp4`;
-  
+
         await ffmpeg.writeFile(inputName, await fetchFile(story.url));
         tempFiles.push(inputName);
-  
+
         await ffmpeg.exec([
-          '-loop', '1',
-          '-i', inputName,
-          '-c:v', 'libx264',
-          '-t', `${duration}`,
-          '-pix_fmt', 'yuv420p',
-          '-vf', `scale=${width}:${height}:force_original_aspect_ratio=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`,
-          '-r', '30',
-          '-preset', 'ultrafast',
-          outputName
+          "-loop",
+          "1",
+          "-i",
+          inputName,
+          "-c:v",
+          "libx264",
+          "-t",
+          `${duration}`,
+          "-pix_fmt",
+          "yuv420p",
+          "-vf",
+          `scale=${width}:${height}:force_original_aspect_ratio=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`,
+          "-r",
+          "30",
+          "-preset",
+          "ultrafast",
+          outputName,
         ]);
-  
+
         tempFiles.push(outputName);
         processedFiles.push({ name: outputName });
         setSaveProgress(((i + 1) / stories.length) * 75);
       }
-  
+
       // 🔹 Concatenate All Videos
-      await ffmpeg.writeFile('list.txt', processedFiles.map(f => `file '${f.name}'`).join('\n'));
-      tempFiles.push('list.txt');
-  
-      setProgressMessage('Creating final video...');
+      await ffmpeg.writeFile(
+        "list.txt",
+        processedFiles.map((f) => `file '${f.name}'`).join("\n")
+      );
+      tempFiles.push("list.txt");
+
+      setProgressMessage("Creating final video...");
       setSaveProgress(85);
-  
-      await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c:v', 'copy', 'temp_output.mp4']);
-      tempFiles.push('temp_output.mp4');
-  
+
+      await ffmpeg.exec([
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        "list.txt",
+        "-c:v",
+        "copy",
+        "temp_output.mp4",
+      ]);
+      tempFiles.push("temp_output.mp4");
+
       // 🔹 Add Background Music If Needed
       if (musicUrl) {
-        setProgressMessage('Adding background music...');
+        setProgressMessage("Adding background music...");
         try {
-          await ffmpeg.writeFile('background.mp3', await fetchFile(musicUrl));
+          await ffmpeg.writeFile("background.mp3", await fetchFile(musicUrl));
           await ffmpeg.exec([
-            '-i', 'temp_output.mp4',
-            '-i', 'background.mp3',
-            '-shortest',
-            '-map', '0:v',
-            '-map', '1:a',
-            '-c:v', 'copy',
-            '-c:a', 'aac',
-            '-b:a', '192k',
-            'final_output.mp4'
+            "-i",
+            "temp_output.mp4",
+            "-i",
+            "background.mp3",
+            "-shortest",
+            "-map",
+            "0:v",
+            "-map",
+            "1:a",
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "final_output.mp4",
           ]);
-  
-          await ffmpeg.deleteFile('background.mp3');
-          await ffmpeg.deleteFile('temp_output.mp4');
+
+          await ffmpeg.deleteFile("background.mp3");
+          await ffmpeg.deleteFile("temp_output.mp4");
         } catch (error) {
-          console.error('Music error:', error);
-          await ffmpeg.exec(['-i', 'temp_output.mp4', '-c', 'copy', 'final_output.mp4']);
+          console.error("Music error:", error);
+          await ffmpeg.exec([
+            "-i",
+            "temp_output.mp4",
+            "-c",
+            "copy",
+            "final_output.mp4",
+          ]);
         }
       } else {
-        await ffmpeg.exec(['-i', 'temp_output.mp4', '-c', 'copy', 'final_output.mp4']);
+        await ffmpeg.exec([
+          "-i",
+          "temp_output.mp4",
+          "-c",
+          "copy",
+          "final_output.mp4",
+        ]);
       }
-  
-      setProgressMessage('Preparing download...');
+
+      setProgressMessage("Preparing download...");
       setSaveProgress(95);
-  
+
       // 🔹 Read Final File
-      const data = await ffmpeg.readFile('final_output.mp4');
+      const data = await ffmpeg.readFile("final_output.mp4");
       setSaveProgress(100);
-  
+
       // 🔹 Save the File (Now Safe to Use the File Handle)
       const writable = await fileHandle.createWritable();
-      await writable.write(new Blob([data.buffer], { type: 'video/mp4' }));
+      await writable.write(new Blob([data.buffer], { type: "video/mp4" }));
       await writable.close();
-  
+
       setShowProgress(false);
       setIsExporting(false);
-      alert('Export completed!');
-  
+      alert("Export completed!");
     } catch (error) {
-      console.error('Export error:', error);
+      console.error("Export error:", error);
       setShowProgress(false);
       setIsExporting(false);
       alert(`Export failed: ${error.message}`);
     }
   };
-  
+
   // Render logic
   return (
     <div className="app-container">
-    <div className="app-content">
-      <div className="slider-container">
-        <h1 className="slider-title">Groove Gallery #12</h1>
-        
-        {stories.length === 0 ? (
-          <EmptyState onFileUpload={handleFileUpload} />
-        ) : (
-          <div 
-            className="story-container"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                className="story-slide"
-                key={currentIndex}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ 
-                  duration: 0.2,
-                  ease: "easeInOut"
-                }}
-              >
+      <div className="app-content">
+        <div className="slider-container">
+          <h1 className="slider-title">Groove Gallery #12</h1>
+
+          {stories.length === 0 ? (
+            <EmptyState onFileUpload={handleFileUpload} />
+          ) : (
+            <div
+              className="story-container"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div className="story-slide">
                 <div className="media-wrapper">
-                  <img 
-                    src={stories[currentIndex].url} 
-                    alt={stories[currentIndex].caption} 
-                    className="media-content" 
+                  <img
+                    src={stories[currentIndex].url}
+                    alt={stories[currentIndex].caption}
+                    className="media-content"
                     style={{
-                      display: 'block',
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                      willChange: 'opacity'
+                      display: "block",
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
                     }}
                     loading="eager"
                   />
-                  <div className="caption">
-                    {stories[currentIndex].caption}
-                  </div>
+                  <div className="caption">{stories[currentIndex].caption}</div>
                 </div>
-              </motion.div>
-            </AnimatePresence>
-
-              <NavigationButtons 
+              </div>
+              <NavigationButtons
                 onPrevious={handlePrevious}
                 onNext={handleNext}
                 isFirstSlide={currentIndex === 0}
                 isLastSlide={currentIndex === stories.length - 1}
               />
 
-              <audio 
-                ref={musicRef} 
-                loop={true} 
+              <audio
+                ref={musicRef}
+                loop={true}
                 onPlay={() => {
                   if (musicRef.current) {
                     musicRef.current.currentTime = 0;
                   }
-                }} 
+                }}
               />
 
-              <ProgressBar 
+              <ProgressBar
                 currentIndex={currentIndex}
                 totalSlides={stories.length}
                 onProgressClick={setCurrentIndex}
@@ -1105,21 +1130,21 @@ const handleDelete = (index) => {
             </div>
           )}
 
-<BottomMenu 
-    onFileUpload={handleFileUpload}
-    onSaveSession={() => setShowExportModal(true)}
-    onPlayPause={handlePlayPause}
-    isPlaying={isPlaying}
-    duration={duration}
-    onDurationChange={setDuration}
-    onEdit={() => setShowEditPanel(true)}
-    onMusicUpload={handleMusicUpload}
-    onBPMChange={handleBPMChange}
-    musicUrl={musicUrl}
-    bpm={bpm}
-    onStartPointChange={setMusicStartPoint}
-    musicStartPoint={musicStartPoint}
-  />
+          <BottomMenu
+            onFileUpload={handleFileUpload}
+            onSaveSession={() => setShowExportModal(true)}
+            onPlayPause={handlePlayPause}
+            isPlaying={isPlaying}
+            duration={duration}
+            onDurationChange={setDuration}
+            onEdit={() => setShowEditPanel(true)}
+            onMusicUpload={handleMusicUpload}
+            onBPMChange={handleBPMChange}
+            musicUrl={musicUrl}
+            bpm={bpm}
+            onStartPointChange={setMusicStartPoint}
+            musicStartPoint={musicStartPoint}
+          />
 
           {showEditPanel && (
             <EditPanel
@@ -1130,7 +1155,7 @@ const handleDelete = (index) => {
             />
           )}
 
-          <ExportModal 
+          <ExportModal
             isOpen={showExportModal}
             progress={saveProgress}
             message={progressMessage}
