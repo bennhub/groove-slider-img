@@ -1114,7 +1114,7 @@ const StorySlider = () => {
     <div className="app-container">
       <div className="app-content">
         <div className="slider-container">
-          <h1 className="slider-title">Groove Gallery #12</h1>
+          <h1 className="slider-title">Groove Gallery #13</h1>
           <audio 
         ref={audioRef}
         src={musicUrl}
