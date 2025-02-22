@@ -118,17 +118,42 @@ const MusicPanel = ({
   onBPMChange,
   currentBPM,
   onStartPointChange,
+  audioRef,
+  musicUrl,  
+  musicStartPoint 
 }) => {
-  const audioRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(0);
-  const [startPoint, setStartPoint] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const controlsRef = useRef(null);
+  
 
   const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
+    if (controlsRef.current) {  
+      setCurrentTime(controlsRef.current.currentTime);
     }
   };
+
+  useEffect(() => {
+    if (controlsRef.current && audioRef.current) {
+      // Add listeners to both audio elements
+      controlsRef.current.addEventListener('timeupdate', handleTimeUpdate);
+      
+      // Sync control audio with main audio
+      controlsRef.current.addEventListener('timeupdate', (e) => {
+        audioRef.current.currentTime = e.target.currentTime;
+      });
+    }
+  
+    return () => {
+      if (controlsRef.current && audioRef.current) {
+        // Clean up listeners from both elements
+        controlsRef.current.removeEventListener('timeupdate', handleTimeUpdate);
+        controlsRef.current.removeEventListener('timeupdate', (e) => {
+          audioRef.current.currentTime = e.target.currentTime;
+        });
+      }
+    };
+  }, [audioRef, controlsRef]);
 
   const handlePlayPause = () => {
     if (audioRef.current) {
@@ -142,11 +167,12 @@ const MusicPanel = ({
   };
 
   const handleSetStartPoint = () => {
-    if (audioRef.current) {
-      const newStartPoint = currentTime;
-      setStartPoint(newStartPoint);
-      audioRef.current.currentTime = newStartPoint;
-      onStartPointChange(newStartPoint); // Pass the start point up
+    if (controlsRef.current) {
+      const newTime = controlsRef.current.currentTime;
+      onStartPointChange(newTime);
+      if (audioRef.current) {
+        audioRef.current.currentTime = newTime;
+      }
     }
   };
 
@@ -171,10 +197,6 @@ const MusicPanel = ({
                 if (file) {
                   const url = URL.createObjectURL(file);
                   onUpload(url);
-                  if (audioRef.current) {
-                    audioRef.current.src = url;
-                    audioRef.current.currentTime = startPoint;
-                  }
                 }
               }}
               className="hidden-input"
@@ -198,13 +220,19 @@ const MusicPanel = ({
         </div>
 
         <div className="music-player">
-          <audio ref={audioRef} controls onTimeUpdate={handleTimeUpdate} />
+
+        <audio 
+            ref={controlsRef}
+            src={musicUrl}
+            controls 
+            onTimeUpdate={handleTimeUpdate}
+          />
           <div className="start-point-controls">
             <div className="time-display">
               Current Time: {formatTime(currentTime)}
             </div>
             <div className="start-point-display">
-              Start Point: {formatTime(startPoint)}
+              Start Point: {formatTime(musicStartPoint)}
             </div>
             <button
               className="set-start-point-button"
@@ -213,6 +241,11 @@ const MusicPanel = ({
               Set Start Point
             </button>
           </div>
+          {musicUrl && (
+            <div className="music-info">
+              <span>Current Track: {musicUrl.split('/').pop()}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -523,6 +556,7 @@ const BottomMenu = ({
   bpm,
   onStartPointChange,
   musicStartPoint,
+  audioRef,
 }) => {
   const [showDurationPanel, setShowDurationPanel] = useState(false);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
@@ -595,6 +629,7 @@ const BottomMenu = ({
 
       {showMusicPanel && (
         <MusicPanel
+          audioRef={audioRef} 
           onUpload={onMusicUpload}
           onBPMChange={onBPMChange}
           currentBPM={bpm}
@@ -702,9 +737,9 @@ const StorySlider = () => {
   const [touchEnd, setTouchEnd] = useState(null);
 
   // Refs
-  const musicRef = useRef(null);
+  const audioRef = useRef(null);
   const intervalRef = useRef(null);
-  
+
   // Image Preload
   const preloadImage = (url) => {
     return new Promise((resolve, reject) => {
@@ -781,9 +816,9 @@ const StorySlider = () => {
   // Music handlers
   const handleMusicUpload = (url) => {
     setMusicUrl(url);
-    if (musicRef.current) {
-      musicRef.current.src = url;
-      musicRef.current.currentTime = musicStartPoint;
+    if (audioRef.current) {
+      audioRef.current.src = url;
+      audioRef.current.currentTime = musicStartPoint;
     }
   };
 
@@ -812,17 +847,17 @@ const StorySlider = () => {
   const handlePlayPause = () => {
     if (isPlaying) {
       stopAutoRotation();
-      if (musicRef.current) {
-        musicRef.current.pause();
+      if (audioRef.current) {
+        audioRef.current.pause();
       }
     } else {
       if (currentIndex === stories.length - 1) {
         setCurrentIndex(0);
       }
       startAutoRotation();
-      if (musicRef.current) {
-        musicRef.current.currentTime = musicStartPoint; // Use the stored start point
-        musicRef.current.play().catch((err) => console.log("Play error:", err));
+      if (audioRef.current && musicUrl) {
+        audioRef.current.currentTime = musicStartPoint; // Use the stored start point
+        audioRef.current.play().catch((err) => console.log("Play error:", err));
       }
     }
     setIsPlaying((prev) => !prev);
@@ -1078,7 +1113,11 @@ const StorySlider = () => {
       <div className="app-content">
         <div className="slider-container">
           <h1 className="slider-title">Groove Gallery #12</h1>
-
+          <audio 
+        ref={audioRef}
+        src={musicUrl}
+        loop={true}
+      />
           {stories.length === 0 ? (
             <EmptyState onFileUpload={handleFileUpload} />
           ) : (
@@ -1112,15 +1151,6 @@ const StorySlider = () => {
                 isLastSlide={currentIndex === stories.length - 1}
               />
 
-              <audio
-                ref={musicRef}
-                loop={true}
-                onPlay={() => {
-                  if (musicRef.current) {
-                    musicRef.current.currentTime = 0;
-                  }
-                }}
-              />
 
               <ProgressBar
                 currentIndex={currentIndex}
@@ -1131,6 +1161,7 @@ const StorySlider = () => {
           )}
 
           <BottomMenu
+            audioRef={audioRef}
             onFileUpload={handleFileUpload}
             onSaveSession={() => setShowExportModal(true)}
             onPlayPause={handlePlayPause}
@@ -1144,6 +1175,7 @@ const StorySlider = () => {
             bpm={bpm}
             onStartPointChange={setMusicStartPoint}
             musicStartPoint={musicStartPoint}
+            onMusicPanelToggle={() => setShowMusicPanel(!showMusicPanel)}
           />
 
           {showEditPanel && (
