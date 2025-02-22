@@ -357,38 +357,25 @@ const ProgressModal = ({ isOpen, progress, message }) => {
 //--------------------------------------------
 // Caption Modal
 //--------------------------------------------
-const CaptionModal = ({ isOpen, onClose, onSubmit, fileName }) => {
-  const [caption, setCaption] = useState("");
-
-  if (!isOpen) return null;
+const ShareNotification = ({ isVisible, onClose }) => {
+  if (!isVisible) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <button className="modal-close" onClick={onClose}>
-          <X size={20} />
-        </button>
-        <h3>Add a Caption</h3>
-        <p className="modal-filename">{fileName}</p>
-        <input
-          type="text"
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          placeholder="Enter your caption..."
-          className="modal-input"
-          autoFocus
-        />
-        <div className="modal-buttons">
-          <button className="modal-button cancel" onClick={onClose}>
-            Skip
+    <div className="share-notification">
+      <div className="share-content">
+        <h3>Export Complete! 🎉</h3>
+        <p>Share your creation:</p>
+        <div className="share-buttons">
+          <button onClick={() => window.open('https://instagram.com', '_blank')} className="share-button instagram">
+            Share to Instagram
           </button>
-          <button
-            className="modal-button submit"
-            onClick={() => onSubmit(caption)}
-          >
-            Add Caption
+          <button onClick={() => window.open('https://tiktok.com', '_blank')} className="share-button tiktok">
+            Share to TikTok
           </button>
         </div>
+        <button onClick={onClose} className="close-notification">
+          <X size={20} />
+        </button>
       </div>
     </div>
   );
@@ -524,13 +511,8 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
                 <X size={16} />
               </button>
               <div className="image-thumbnail">
-                <img src={story.url} alt={story.caption} />
+                <img src={story.url} alt={`Slide ${index + 1}`} />
               </div>
-            </div>
-            <div className="thumbnail-caption">
-              {story.caption.length > 20
-                ? `${story.caption.substring(0, 20)}...`
-                : story.caption}
             </div>
           </div>
         ))}
@@ -718,6 +700,10 @@ const StorySlider = () => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [currentFile, setCurrentFile] = useState(null);
 
+  // Notifications State
+  const [showShareNotification, setShowShareNotification] = useState(false);
+
+
   // Export State
   const [isExporting, setIsExporting] = useState(false);
   const [saveProgress, setSaveProgress] = useState(null);
@@ -795,19 +781,10 @@ const StorySlider = () => {
       return;
     }
 
-    const newStories = files.map((file) => {
-      const url = URL.createObjectURL(file);
-      const wantCaption = window.confirm("Would you like to add a caption?");
-      const caption = wantCaption
-        ? prompt("Add a caption:", file.name) || file.name
-        : file.name;
-
-      return {
-        type: "image",
-        url,
-        caption,
-      };
-    });
+    const newStories = files.map((file) => ({
+      type: "image",
+      url: URL.createObjectURL(file)
+    }));
 
     setStories((prevStories) => [...prevStories, ...newStories]);
     event.target.value = "";
@@ -1100,7 +1077,7 @@ const StorySlider = () => {
 
       setShowProgress(false);
       setIsExporting(false);
-      alert("Export completed!");
+      setShowShareNotification(true);
     } catch (error) {
       console.error("Export error:", error);
       setShowProgress(false);
@@ -1114,7 +1091,7 @@ const StorySlider = () => {
     <div className="app-container">
       <div className="app-content">
         <div className="slider-container">
-          <h1 className="slider-title">Groove Gallery #13</h1>
+          <h1 className="slider-title">Groove Gallery #14</h1>
           <audio 
         ref={audioRef}
         src={musicUrl}
@@ -1129,23 +1106,22 @@ const StorySlider = () => {
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             >
-              <div className="story-slide">
-                <div className="media-wrapper">
-                  <img
-                    src={stories[currentIndex].url}
-                    alt={stories[currentIndex].caption}
-                    className="media-content"
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                    }}
-                    loading="eager"
-                  />
-                  <div className="caption">{stories[currentIndex].caption}</div>
-                </div>
-              </div>
+             <div className="story-slide">
+  <div className="media-wrapper">
+    <img
+      src={stories[currentIndex].url}
+      alt={`Slide ${currentIndex + 1}`}  // Changed from caption to slide number
+      className="media-content"
+      style={{
+        display: "block",
+        width: "100%",
+        height: "100%",
+        objectFit: "contain",
+      }}
+      loading="eager"
+    />
+  </div>
+</div>
               <NavigationButtons
                 onPrevious={handlePrevious}
                 onNext={handleNext}
@@ -1202,6 +1178,10 @@ const StorySlider = () => {
             isOpen={showProgress}
             progress={saveProgress}
             message={progressMessage}
+          />
+          <ShareNotification 
+            isVisible={showShareNotification}
+            onClose={() => setShowShareNotification(false)}
           />
         </div>
       </div>
