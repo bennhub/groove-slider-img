@@ -539,6 +539,8 @@ const BottomMenu = ({
   onStartPointChange,
   musicStartPoint,
   audioRef,
+  isLoopingEnabled,
+  setIsLoopingEnabled 
 }) => {
   const [showDurationPanel, setShowDurationPanel] = useState(false);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
@@ -605,6 +607,16 @@ const BottomMenu = ({
               <span>Current Duration: {duration.toFixed(2)}s</span>
               <span className="bpm-info">at {bpm} BPM</span>
             </div>
+            <div className="loop-toggle">
+    <label>
+      <input
+        type="checkbox"
+        checked={isLoopingEnabled}
+        onChange={() => setIsLoopingEnabled(!isLoopingEnabled)}
+      />
+      Loop Slideshow
+    </label>
+  </div>
           </div>
         </div>
       )}
@@ -715,6 +727,9 @@ const StorySlider = () => {
   const [bpm, setBpm] = useState(120);
   const [musicStartPoint, setMusicStartPoint] = useState(0);
 
+  // Looping State
+  const [isLoopingEnabled, setIsLoopingEnabled] = useState(false);
+
   // Image Preload
   const [preloadedImages, setPreloadedImages] = useState({});
 
@@ -809,8 +824,11 @@ const StorySlider = () => {
   const startAutoRotation = () => {
     intervalRef.current = setInterval(() => {
       setCurrentIndex((prevIndex) => {
-        if (prevIndex >= stories.length - 1) return 0;
-        return prevIndex + 1;
+        if (!isLoopingEnabled && prevIndex >= stories.length - 1) {
+          stopAutoRotation();
+          return prevIndex;
+        }
+        return (prevIndex + 1) % stories.length;
       });
     }, duration * 1000);
   };
@@ -1154,6 +1172,8 @@ const StorySlider = () => {
             onStartPointChange={setMusicStartPoint}
             musicStartPoint={musicStartPoint}
             onMusicPanelToggle={() => setShowMusicPanel(!showMusicPanel)}
+            isLoopingEnabled={isLoopingEnabled}
+            setIsLoopingEnabled={setIsLoopingEnabled}
           />
 
           {showEditPanel && (
