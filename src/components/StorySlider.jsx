@@ -393,6 +393,8 @@ const ExportModal = ({
   isExporting,
 }) => {
   const [resolution, setResolution] = useState("1080x1920");
+  const [isExportLoopEnabled, setIsExportLoopEnabled] = useState(false);
+  const [exportLoopDuration, setExportLoopDuration] = useState(30);
 
   if (!isOpen) return null;
 
@@ -419,6 +421,33 @@ const ExportModal = ({
               </select>
             </div>
 
+            <div className="export-loop-settings">
+              <div className="loop-toggle">
+                <label>
+                  <span>Export as Loop</span>
+                  <input
+                    type="checkbox"
+                    checked={isExportLoopEnabled}
+                    onChange={() => setIsExportLoopEnabled(!isExportLoopEnabled)}
+                  />
+                </label>
+              </div>
+
+              {isExportLoopEnabled && (
+                <div className="loop-duration-input">
+                  <label>Loop Duration (seconds):</label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="300"
+                    value={exportLoopDuration}
+                    onChange={(e) => setExportLoopDuration(Number(e.target.value))}
+                    className="duration-input"
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="export-actions">
               <button
                 className="action-button share"
@@ -431,12 +460,16 @@ const ExportModal = ({
               </button>
 
               <button
-                className="action-button download"
-                onClick={() => onExport(resolution)}
-              >
-                <Download className="button-icon" />
-                Export
-              </button>
+  className="action-button download"
+  onClick={() => onExport({
+    resolution, 
+    isExportLoopEnabled, 
+    exportLoopDuration
+  })}
+>
+  <Download className="button-icon" />
+  Export
+</button>
             </div>
           </>
         ) : (
@@ -940,15 +973,20 @@ const StorySlider = () => {
   };
 
   // Export functionality
-  const handleSaveSession = async (resolution = "1080x1920") => {
+  const handleSaveSession = async (exportSettings) => {
+    // Destructure export settings with default values
+    const { 
+      resolution = "1080x1920", 
+      isExportLoopEnabled = false, 
+      exportLoopDuration = 0 
+    } = exportSettings;
+  
     try {
       let fileHandle;
       let fileName = "slideshow.mp4";
-
-      // Check if we're on mobile/unsupported browser
+  
+      // Existing file handle logic remains the same
       if (!("showSaveFilePicker" in window)) {
-        // Mobile fallback - file will download automatically
-        // Create a temporary anchor element
         const link = document.createElement("a");
         link.download = fileName;
         fileHandle = {
@@ -967,7 +1005,6 @@ const StorySlider = () => {
           },
         };
       } else {
-        // Desktop - use file picker
         fileHandle = await window.showSaveFilePicker({
           suggestedName: fileName,
           types: [
@@ -975,65 +1012,77 @@ const StorySlider = () => {
           ],
         });
       }
-
+  
       setIsExporting(true);
       setShowProgress(true);
       setProgressMessage("Preparing to export video...");
       setSaveProgress(0);
-
+  
       if (!ffmpeg.loaded) {
         await loadFFmpeg();
       }
-
+  
       let tempFiles = [];
       const processedFiles = [];
       const [width, height] = resolution.split("x").map(Number);
-
-      // 🔹 Process Images into Video Segments
-      for (let i = 0; i < stories.length; i++) {
-        const story = stories[i];
-        setProgressMessage(`Processing image ${i + 1}/${stories.length}`);
-        const inputName = `input${i}.png`;
-        const outputName = `processed${i}.mp4`;
-
-        await ffmpeg.writeFile(inputName, await fetchFile(story.url));
-        tempFiles.push(inputName);
-
-        await ffmpeg.exec([
-          "-loop",
-          "1",
-          "-i",
-          inputName,
-          "-c:v",
-          "libx264",
-          "-t",
-          `${duration}`,
-          "-pix_fmt",
-          "yuv420p",
-          "-vf",
-          `scale=${width}:${height}:force_original_aspect_ratio=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`,
-          "-r",
-          "30",
-          "-preset",
-          "ultrafast",
-          outputName,
-        ]);
-
-        tempFiles.push(outputName);
-        processedFiles.push({ name: outputName });
-        setSaveProgress(((i + 1) / stories.length) * 75);
+  
+      // Calculate total slideshow duration and loop parameters
+      const totalSlideshowDuration = stories.length * duration;
+      const loopCount = isExportLoopEnabled && exportLoopDuration > 0
+        ? Math.ceil(exportLoopDuration / totalSlideshowDuration)
+        : 1;
+  
+      // Process images multiple times based on loop settings
+      for (let loop = 0; loop < loopCount; loop++) {
+        for (let i = 0; i < stories.length; i++) {
+          const story = stories[i];
+          setProgressMessage(`Processing image ${i + 1}/${stories.length} (Loop ${loop + 1}/${loopCount})`);
+          
+          const inputName = `input_${loop}_${i}.png`;
+          const outputName = `processed_${loop}_${i}.mp4`;
+  
+          await ffmpeg.writeFile(inputName, await fetchFile(story.url));
+          tempFiles.push(inputName);
+  
+          await ffmpeg.exec([
+            "-loop",
+            "1",
+            "-i",
+            inputName,
+            "-c:v",
+            "libx264",
+            "-t",
+            `${duration}`,
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            `scale=${width}:${height}:force_original_aspect_ratio=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`,
+            "-r",
+            "30",
+            "-preset",
+            "ultrafast",
+            outputName,
+          ]);
+  
+          tempFiles.push(outputName);
+          processedFiles.push({ name: outputName });
+          
+          // Update progress, accounting for multiple loops
+          setSaveProgress(((loop * stories.length + i + 1) / (loopCount * stories.length)) * 75);
+        }
       }
-
-      // 🔹 Concatenate All Videos
+  
+      // Write concatenation list
       await ffmpeg.writeFile(
         "list.txt",
         processedFiles.map((f) => `file '${f.name}'`).join("\n")
       );
       tempFiles.push("list.txt");
-
+  
       setProgressMessage("Creating final video...");
       setSaveProgress(85);
-
+  
+      // Concatenate processed files
       await ffmpeg.exec([
         "-f",
         "concat",
@@ -1046,8 +1095,8 @@ const StorySlider = () => {
         "temp_output.mp4",
       ]);
       tempFiles.push("temp_output.mp4");
-
-      // 🔹 Add Background Music If Needed
+  
+      // Add Background Music (existing logic remains the same)
       if (musicUrl) {
         setProgressMessage("Adding background music...");
         try {
@@ -1072,7 +1121,7 @@ const StorySlider = () => {
             "192k",
             "final_output.mp4",
           ]);
-
+  
           await ffmpeg.deleteFile("background.mp3");
           await ffmpeg.deleteFile("temp_output.mp4");
         } catch (error) {
@@ -1094,19 +1143,18 @@ const StorySlider = () => {
           "final_output.mp4",
         ]);
       }
-
+  
       setProgressMessage("Preparing download...");
       setSaveProgress(95);
-
-      // 🔹 Read Final File
+  
+      // Read and save final file (existing logic remains the same)
       const data = await ffmpeg.readFile("final_output.mp4");
       setSaveProgress(100);
-
-      // 🔹 Save the File (Now Safe to Use the File Handle)
+  
       const writable = await fileHandle.createWritable();
       await writable.write(new Blob([data.buffer], { type: "video/mp4" }));
       await writable.close();
-
+  
       setShowProgress(false);
       setIsExporting(false);
       setShowShareNotification(true);
