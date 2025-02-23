@@ -546,6 +546,16 @@ const BottomMenu = ({
   const [showMusicPanel, setShowMusicPanel] = useState(false);
   const [selectedBar, setSelectedBar] = useState(1);
 
+  useEffect(() => {
+    const barOptions = [0.125, 0.25, 0.5, 1, 2, 4, 8, 16];
+    const matchedBar = barOptions.find(option => 
+      Math.abs((duration * bpm) / (4 * 60) - option) < 0.01
+    );
+    if (matchedBar) {
+      setSelectedBar(matchedBar);
+    }
+  }, [duration, bpm]);
+
   // Calculate duration based on BPM and selected bar length
   const calculateDuration = (bars, bpm) => {
     // Duration = (bars * beats per bar * seconds per beat)
@@ -594,7 +604,7 @@ const BottomMenu = ({
                     selectedBar === option.value ? "selected" : ""
                   }`}
                   onClick={() => {
-                    const newDuration = (option.value * 4 * 60) / bpm;
+                    const newDuration = calculateDuration(option.value, bpm);
                     setSelectedBar(option.value);
                     onDurationChange(newDuration);
                   }}
@@ -816,8 +826,12 @@ const StorySlider = () => {
 
   const handleBPMChange = (newBPM) => {
     setBpm(newBPM);
-    const slideDuration = (60 / newBPM) * 4; // 4 beats per slide
-    setDuration(slideDuration);
+    const barOptions = [0.125, 0.25, 0.5, 1, 2, 4, 8, 16];
+    const currentBarOption = barOptions.find(option => 
+      Math.abs((duration * newBPM) / (4 * 60) - option) < 0.01
+    ) || 1; 
+    const newDuration = (currentBarOption * 4 * 60) / newBPM;
+    setDuration(newDuration);
   };
 
   // Playback control
