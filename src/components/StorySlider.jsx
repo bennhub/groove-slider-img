@@ -918,6 +918,30 @@ const StorySlider = () => {
     }
   }, [duration]);
 
+
+// Clear Session
+  const handleClearSession = () => {
+    if (window.confirm('Are you sure you want to clear all content and start fresh?')) {
+      // Clear images
+      setStories([]);
+      // Reset index
+      setCurrentIndex(0);
+      // Clear music
+      setMusicUrl(null);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+      // Reset playback state
+      setIsPlaying(false);
+      // Reset other states
+      setBpm(120);
+      setMusicStartPoint(0);
+      setDuration(2);
+      setIsLoopingEnabled(false);
+    }
+  };
+
   //==============================================
   // STORY SLIDER COMPONENT - Render & Export Logic
   //==============================================
@@ -1171,7 +1195,15 @@ const StorySlider = () => {
     <div className="app-container">
       <div className="app-content">
         <div className="slider-container">
-          <h1 className="slider-title">Groove Gallery #15</h1>
+        <div className="title-bar">
+        <h1 className="slider-title">Groove Gallery #16</h1>
+    <button 
+      onClick={handleClearSession}
+      className="clear-button"
+    >
+      Clear
+    </button>
+  </div>
           <audio 
         ref={audioRef}
         src={musicUrl}
