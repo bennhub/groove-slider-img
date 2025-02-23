@@ -495,24 +495,45 @@ const ExportModal = ({
 //--------------------------------------------
 // Edit Panel Component
 //--------------------------------------------
+// Edit Panel Component
 const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
-  const handleDragStart = (e, index) => {
-    e.dataTransfer.setData("text/plain", String(index));
-  };
+  // State to track position input values
+  const [positions, setPositions] = useState(
+    stories.map((_, index) => index + 1)
+  );
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e, dropIndex) => {
-    e.preventDefault();
-    const dragIndex = Number(e.dataTransfer.getData("text/plain"));
-    if (dragIndex === dropIndex) return;
-
-    const newStories = [...stories];
-    const [movedItem] = newStories.splice(dragIndex, 1);
-    newStories.splice(dropIndex, 0, movedItem);
-    onReorder(newStories);
+  // Handle position change for an image
+  const handlePositionChange = (index, value) => {
+    // Handle empty or invalid input
+    if (value === '' || isNaN(value)) {
+      const newPositions = [...positions];
+      newPositions[index] = '';  // Allow empty state while typing
+      setPositions(newPositions);
+      return;  // Don't reorder until we have a valid number
+    }
+  
+    const newPosition = parseInt(value);
+    // Only reorder if we have a valid position
+    if (newPosition >= 1 && newPosition <= stories.length) {
+      const validPosition = Math.min(Math.max(1, newPosition), stories.length);
+      
+      // Create new positions array
+      const newPositions = [...positions];
+      newPositions[index] = validPosition;
+      setPositions(newPositions);
+  
+      // Reorder the stories based on new position
+      const newStories = [...stories];
+      const movedItem = newStories.splice(index, 1)[0];
+      newStories.splice(validPosition - 1, 0, movedItem);
+      
+      // Update positions to reflect new order
+      const updatedPositions = newStories.map((_, i) => i + 1);
+      setPositions(updatedPositions);
+      
+      // Call parent's reorder function
+      onReorder(newStories);
+    }
   };
 
   return (
@@ -523,31 +544,38 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
           <X size={20} />
         </button>
       </div>
+      
+      {/* Thumbnails section */}
       <div className="thumbnails-container">
         {stories.map((story, index) => (
-          <div
-            key={index}
-            draggable={true}
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, index)}
-            className="thumbnail"
-          >
-            <div className="thumbnail-content">
-              <button
-                className="delete-button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(index);
-                }}
-              >
-                <X size={16} />
-              </button>
-              <div className="image-thumbnail">
-                <img src={story.url} alt={`Slide ${index + 1}`} />
-              </div>
+          <div key={index} className="thumbnail">
+          <div className="thumbnail-content">
+            <button
+              className="delete-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(index);
+              }}
+            >
+              <X size={16} />
+            </button>
+            <div className="image-thumbnail">
+              <img src={story.url} alt={`Slide ${index + 1}`} />
             </div>
           </div>
+          {/* Moved reorder-control outside thumbnail-content */}
+          <div className="reorder-control">
+            <span>Reorder</span>
+            <input
+              type="number"
+              min="1"
+              max={stories.length}
+              value={positions[index]}
+              onChange={(e) => handlePositionChange(index, parseInt(e.target.value))}
+              className="position-input"
+            />
+          </div>
+        </div>
         ))}
       </div>
     </div>
@@ -573,7 +601,12 @@ const BottomMenu = ({
   musicStartPoint,
   audioRef,
   isLoopingEnabled,
-  setIsLoopingEnabled 
+  setIsLoopingEnabled,
+  showEditPanel,
+  setShowEditPanel,
+  stories,
+  setStories,
+  handleDelete
 }) => {
   const [showDurationPanel, setShowDurationPanel] = useState(false);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
@@ -651,15 +684,15 @@ const BottomMenu = ({
               <span className="bpm-info">at {bpm} BPM</span>
             </div>
             <div className="loop-toggle">
-    <label>
-      <input
-        type="checkbox"
-        checked={isLoopingEnabled}
-        onChange={() => setIsLoopingEnabled(!isLoopingEnabled)}
-      />
-      Loop Slideshow
-    </label>
-  </div>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={isLoopingEnabled}
+                  onChange={() => setIsLoopingEnabled(!isLoopingEnabled)}
+                />
+                Loop Slideshow
+              </label>
+            </div>
           </div>
         </div>
       )}
@@ -676,12 +709,22 @@ const BottomMenu = ({
         />
       )}
 
+      {showEditPanel && (
+        <EditPanel
+          stories={stories}
+          onClose={() => setShowEditPanel(false)}
+          onReorder={setStories}
+          onDelete={handleDelete}
+        />
+      )}
+
       <div className="bottom-menu-buttons">
         <button
           className="bottom-menu-button"
           onClick={() => {
             setShowDurationPanel(!showDurationPanel);
             setShowMusicPanel(false);
+            setShowEditPanel(false);
           }}
         >
           <Clock className="bottom-menu-icon" />
@@ -693,6 +736,7 @@ const BottomMenu = ({
           onClick={() => {
             setShowMusicPanel(!showMusicPanel);
             setShowDurationPanel(false);
+            setShowEditPanel(false);
           }}
         >
           <Music className="bottom-menu-icon" />
@@ -711,7 +755,14 @@ const BottomMenu = ({
         </button>
 
         <div className="bottom-menu-right-group">
-          <button className="bottom-menu-button" onClick={onEdit}>
+          <button 
+            className="bottom-menu-button" 
+            onClick={() => {
+              setShowEditPanel(!showEditPanel);
+              setShowMusicPanel(false);
+              setShowDurationPanel(false);
+            }}
+          >
             <Edit className="bottom-menu-icon" />
             <span className="bottom-menu-text">Edit</span>
           </button>
@@ -1258,7 +1309,7 @@ const StorySlider = () => {
             isPlaying={isPlaying}
             duration={duration}
             onDurationChange={setDuration}
-            onEdit={() => setShowEditPanel(true)}
+            onEdit={() => setShowEditPanel(!showEditPanel)} 
             onMusicUpload={handleMusicUpload}
             onBPMChange={handleBPMChange}
             musicUrl={musicUrl}
@@ -1268,16 +1319,21 @@ const StorySlider = () => {
             onMusicPanelToggle={() => setShowMusicPanel(!showMusicPanel)}
             isLoopingEnabled={isLoopingEnabled}
             setIsLoopingEnabled={setIsLoopingEnabled}
+            showEditPanel={showEditPanel}
+            setShowEditPanel={setShowEditPanel}
+            stories={stories}
+            setStories={setStories}  
+            handleDelete={handleDelete}
           />
 
-          {showEditPanel && (
-            <EditPanel
-              stories={stories}
-              onClose={() => setShowEditPanel(false)}
-              onReorder={setStories}
-              onDelete={handleDelete}
-            />
-          )}
+{showEditPanel && (
+  <EditPanel
+    stories={stories}
+    onClose={() => setShowEditPanel(!showEditPanel)}  
+    onReorder={setStories}
+    onDelete={handleDelete}
+  />
+)}
 
           <ExportModal
             isOpen={showExportModal}
