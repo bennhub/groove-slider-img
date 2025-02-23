@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+html, body {
+  overscroll-behavior-y: none;  
+  overflow-y: auto;            
+}
+
 body {
   background-color: #f0f0f0;
 }
