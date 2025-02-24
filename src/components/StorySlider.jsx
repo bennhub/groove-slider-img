@@ -17,6 +17,7 @@ import {
   Share,
   Download,
   Music,
+  Volume,
 } from "lucide-react";
 //import { motion, useAnimation, AnimatePresence } from 'framer-motion';
 import { FFmpeg } from "@ffmpeg/ffmpeg";
@@ -104,8 +105,11 @@ const TapTempo = ({ onBPMChange }) => {
   return (
     <div className="tap-tempo">
       <button onClick={handleTap} className="tap-button">
-        Tap Tempo: {currentBPM > 0 ? `${currentBPM} BPM` : "Tap to rhythm"}
-      </button>
+  Tap Tempo
+  <span className="bpm-text">
+    {currentBPM > 0 ? `${currentBPM} BPM` : ""}
+  </span>
+</button>
     </div>
   );
 };
@@ -124,8 +128,10 @@ const MusicPanel = ({
 }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [duration, setDuration] = useState(0);
   const controlsRef = useRef(null);
-  
+  const [fileName, setFileName] = useState('');
 
   const handleTimeUpdate = () => {
     if (controlsRef.current) {  
@@ -135,18 +141,18 @@ const MusicPanel = ({
 
   useEffect(() => {
     if (controlsRef.current && audioRef.current) {
-      // Add listeners to both audio elements
       controlsRef.current.addEventListener('timeupdate', handleTimeUpdate);
-      
-      // Sync control audio with main audio
       controlsRef.current.addEventListener('timeupdate', (e) => {
         audioRef.current.currentTime = e.target.currentTime;
       });
+      
+      controlsRef.current.addEventListener('loadedmetadata', () => {
+        setDuration(controlsRef.current.duration);
+      });
     }
-  
+
     return () => {
       if (controlsRef.current && audioRef.current) {
-        // Clean up listeners from both elements
         controlsRef.current.removeEventListener('timeupdate', handleTimeUpdate);
         controlsRef.current.removeEventListener('timeupdate', (e) => {
           audioRef.current.currentTime = e.target.currentTime;
@@ -156,11 +162,11 @@ const MusicPanel = ({
   }, [audioRef, controlsRef]);
 
   const handlePlayPause = () => {
-    if (audioRef.current) {
+    if (controlsRef.current) {
       if (isPlaying) {
-        audioRef.current.pause();
+        controlsRef.current.pause();
       } else {
-        audioRef.current.play();
+        controlsRef.current.play();
       }
       setIsPlaying(!isPlaying);
     }
@@ -190,17 +196,18 @@ const MusicPanel = ({
             <Music className="icon" />
             <span>Upload Music</span>
             <input
-              type="file"
-              accept="audio/*"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  const url = URL.createObjectURL(file);
-                  onUpload(url);
-                }
-              }}
-              className="hidden-input"
-            />
+  type="file"
+  accept="audio/*"
+  onChange={(e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setFileName(file.name);  // Store the actual file name
+      onUpload(url);
+    }
+  }}
+  className="hidden-input"
+/>
           </label>
         </div>
 
@@ -220,18 +227,76 @@ const MusicPanel = ({
         </div>
 
         <div className="music-player">
-
-        <audio 
+          <audio 
             ref={controlsRef}
             src={musicUrl}
-            controls 
             onTimeUpdate={handleTimeUpdate}
           />
-          <div className="start-point-controls">
+          
+          {musicUrl && (
+  <div className="music-info">
+    <span>{fileName || 'Track Title'}</span>
+  </div>
+)}
+
+          <button 
+            className="audio-control-button"
+            onClick={handlePlayPause}
+          >
+            {isPlaying ? (
+              <Pause size={32} />
+            ) : (
+              <Play size={32} />
+            )}
+          </button>
+
+          <div className="audio-progress">
             <div className="time-display">
-              Current Time: {formatTime(currentTime)}
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
             </div>
-            <div className="start-point-display">
+            <div className="progress-bar-container">
+              <input
+                type="range"
+                min="0"
+                max={duration || 100}
+                value={currentTime}
+                onChange={(e) => {
+                  const time = parseFloat(e.target.value);
+                  if (controlsRef.current) {
+                    controlsRef.current.currentTime = time;
+                  }
+                }}
+                className="progress-slider"
+              />
+              <div 
+                className="start-point-marker"
+                style={{ left: `${(musicStartPoint / (duration || 1)) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="volume-control">
+            <Volume size={20} />
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={volume}
+              onChange={(e) => {
+                const vol = parseFloat(e.target.value);
+                if (controlsRef.current) {
+                  controlsRef.current.volume = vol;
+                }
+                setVolume(vol);
+              }}
+              className="volume-slider"
+            />
+          </div>
+
+          <div className="start-point-controls">
+            <div className="start-point-time">
               Start Point: {formatTime(musicStartPoint)}
             </div>
             <button
@@ -241,11 +306,6 @@ const MusicPanel = ({
               Set Start Point
             </button>
           </div>
-          {musicUrl && (
-            <div className="music-info">
-              <span>Current Track: {musicUrl.split('/').pop()}</span>
-            </div>
-          )}
         </div>
       </div>
     </div>

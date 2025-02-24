@@ -693,11 +693,14 @@ body {
 .duration-info span {
   color: rgb(0, 0, 0);
   font-size: 14px;
+  font-family: Arial, Helvetica, sans-serif
 }
 
 .duration-info .bpm-info {
   font-size: 12px;
   opacity: 0.7;
+  font-family: Arial, Helvetica, sans-serif;
+  color: rgb(9, 127, 159);
 }
 
 /* Animation for bar option selection */
@@ -954,6 +957,21 @@ body {
   opacity: 0.9;
 }
 
+.loop-duration-input {
+  width: 150px; /* Adjust width as needed */
+  padding: 80x;
+  border: 2px solid #4c98e5; /* Blue border */
+  border-radius: 6px;
+  background: #f0f0f0; /* Light background */
+  color: #000;
+  font-size: 18px;
+  font-family: Arial, Helvetica, sans-serif;
+  text-align: center; /* Center text */
+  outline: none;
+  margin: 10px;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
 /*Loop toggle*/
 .loop-toggle {
   display: flex;
@@ -961,6 +979,7 @@ body {
   justify-content: space-between;
   background-color: #f0f0f0;
   border-radius: 50px;
+  border: 2px solid #70bfde;
   padding: 10px 15px;
   margin: 15px 0;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -970,6 +989,7 @@ body {
   display: flex;
   align-items: center;
   font-size: 16px;
+  font-family: Arial, Helvetica, sans-serif;
   color: #333;
   user-select: none;
   gap: 15px;
@@ -1028,16 +1048,17 @@ body {
   border-radius: 10px;
 }
 
+/* Panel Positioning and Base Styles */
 .music-panel {
   position: absolute;
   bottom: 100%;
   left: 0;
   right: 0;
   width: 100%;
-  max-width: 390px; /* Match slider max-width */
-  background: rgba(255, 255, 255, 0.9);
+  max-width: 390px;
+  background: rgb(230, 228, 225);
   padding: 16px;
-  border:2px solid #000;
+  border: 2px solid #000;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
 }
@@ -1048,6 +1069,31 @@ body {
   gap: 16px;
 }
 
+/* Upload Button Styles */
+.upload-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgb(0, 0, 0);
+  font-family: Arial, Helvetica, sans-serif;
+  border: 1px solid #000000;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.bpm-text {
+  display: block; /* Ensures BPM appears on a new line */
+  font-size: 16px; /* Adjust as needed */
+  margin-top: 4px; /* Adds spacing between lines */
+}
+
+/* BPM Control Styles */
 .tap-tempo {
   display: flex;
   flex-direction: column;
@@ -1072,13 +1118,6 @@ body {
   transform: scale(0.98);
 }
 
-.manual-bpm {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 0.5rem;
-}
-
 .bpm-control {
   display: flex;
   align-items: center;
@@ -1087,34 +1126,192 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.manual-bpm {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
 .bpm-input {
   width: 80px;
-  padding: 4px;
+  padding: 10px;
   border-radius: 4px;
-  border: 1px solid #000000;
+  border: 3px solid #4c98e5;
   background: #e2e2e2;
   color: rgb(0, 0, 0);
+  font-size: 20px;
 }
 
+/* Music Player Styles */
 .music-player {
   width: 100%;
+  background: #f5f5f5;
+  border-radius: 8px;
+  border: 1px solid #000000;
+  padding: 12px;
 }
 
-.music-player audio {
+.music-info {
+  text-align: center;
+  font-size: 15px;
+  font-family: Arial, Helvetica, sans-serif;
+  color: rgb(230, 14, 39);
+  margin-bottom: 12px;
+  word-break: break-all;
+}
+
+/* Play/Pause Button */
+.audio-control-button {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 12px auto;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.audio-control-button:hover {
+  background: #357abd;
+}
+
+/* Progress Bar */
+.audio-progress {
   width: 100%;
-  height: 32px;
+  margin: 12px 0;
 }
 
-.upload-button {
+.time-display {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #1f1f1f;
+  margin-bottom: 8px;
+}
+
+.progress-bar-container {
+  position: relative;
+  width: 100%;
+  height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+.progress-slider {
+  width: 100%;
+  height: 8px;
+  -webkit-appearance: none;
+  background: #ddd;
+  border-radius: 4px;
+  outline: none;
+}
+
+.progress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4a90e2;
+  cursor: pointer;
+  border: none;
+}
+
+.start-point-marker {
+  position: absolute;
+  width: 4px;
+  height: 16px;
+  background: #ff4444;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* Volume Control */
+.volume-control {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: #ffffff;
-  border-radius: 8px;
+  padding: 0 12px;
+  margin: 12px 0;
+}
+
+.volume-slider {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  background: #ddd;
+  border-radius: 2px;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4a90e2;
   cursor: pointer;
-  color: rgb(0, 0, 0);
+  border: none;
+}
+
+/* Start Point Controls */
+.start-point-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.start-point-time {
+  font-size: 15px;
   font-family: Arial, Helvetica, sans-serif;
+  color: #232323;
+  border: 1px dotted #000;
+  padding: 10px;
+}
+
+.set-start-point-button {
+  width: 100%;
+  padding: 12px;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.set-start-point-button:hover {
+  background: #357abd;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .progress-slider::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .volume-slider::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .bpm-input {
+    font-size: 20px;
+    padding: 8px;
+  }
+  
+  .set-start-point-button {
+    padding: 16px;
+  }
 }
 
 .hidden-input {
