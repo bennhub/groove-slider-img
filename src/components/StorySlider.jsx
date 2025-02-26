@@ -18,6 +18,7 @@ import {
   Download,
   Music,
   Volume,
+  Info,
 } from "lucide-react";
 //import { motion, useAnimation, AnimatePresence } from 'framer-motion';
 import { FFmpeg } from "@ffmpeg/ffmpeg";
@@ -64,6 +65,65 @@ const loadFFmpeg = async () => {
 
     throw error;
   }
+};
+
+//==============================================
+// LANDING PAGE COMPONENT
+//==============================================
+const GrooveGalleryLanding = ({ onCreateSlideshow }) => {
+  return (
+    <div className="landing-container">
+      {/* Header with app title and info button */}
+      <div className="landing-header">
+        <button className="info-button">
+          <Info size={24} />
+        </button>
+        <h1 className="app-title">Groove Gallery</h1>
+        <button className="clear-button">Clear</button>
+      </div>
+
+      {/* Main background with 70's style patterns */}
+      <div className="retro-background">
+        <div className="wave-pattern top"></div>
+        <div className="wave-pattern bottom"></div>
+        
+        {/* Central action button */}
+        <button className="create-button" onClick={onCreateSlideshow}>
+          CREATE A SLIDESHOW
+        </button>
+      </div>
+
+      {/* Featured Style Section */}
+      <div className="featured-section">
+        <h2 className="section-title">Featured Style</h2>
+        
+        <div className="style-card">
+          <div className="style-preview">
+            <div className="style-overlay">
+              <div className="style-name">Groove Gallery</div>
+            </div>
+          </div>
+          <button className="use-style-button">
+            <Music size={18} />
+            <span>USE THIS STYLE</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="landing-nav">
+        <button className="nav-button active">
+          <div className="nav-icon home-icon"></div>
+        </button>
+        <button className="nav-button">
+          <div className="nav-icon plus-icon"></div>
+        </button>
+        <button className="nav-button">
+          <div className="nav-icon profile-icon"></div>
+        </button>
+      </div>
+    </div>
+  );
 };
 //==============================================
 // TAP TEMPO COMPONENT
@@ -494,17 +554,17 @@ const ExportModal = ({
               </div>
 
               {isExportLoopEnabled && (
-                <div className="loop-duration-input">
-                  <label>Loop Duration (seconds):</label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="300"
-                    value={exportLoopDuration}
-                    onChange={(e) => setExportLoopDuration(Number(e.target.value))}
-                    className="duration-input"
-                  />
-                </div>
+               <div className="input-container">
+               <label>Loop Duration (seconds):</label>
+               <input
+                 type="number"
+                 min="5"
+                 max="300"
+                 value={exportLoopDuration}
+                 onChange={(e) => setExportLoopDuration(Number(e.target.value))}
+                 className="loop-duration-input"
+               />
+             </div>
               )}
             </div>
 
@@ -854,6 +914,8 @@ const BottomMenu = ({
 // STORY SLIDER COMPONENT - State & Handlers
 //==============================================
 const StorySlider = () => {
+
+  const [showLanding, setShowLanding] = useState(true);
   // Core State
   const [currentIndex, setCurrentIndex] = useState(0);
   const [stories, setStories] = useState([]);
@@ -894,6 +956,11 @@ const StorySlider = () => {
   // Refs
   const audioRef = useRef(null);
   const intervalRef = useRef(null);
+
+  //
+  const handleStartSlideshow = () => {
+    setShowLanding(false);
+  };
 
   // Image Preload
   const preloadImage = (url) => {
@@ -1303,119 +1370,123 @@ const StorySlider = () => {
 
   // Render logic
   return (
-    <div className="app-container">
-      <div className="app-content">
-        <div className="slider-container">
-        <div className="title-bar">
-        <h1 className="slider-title">Groove Gallery #16</h1>
-    <button 
-      onClick={handleClearSession}
-      className="clear-button"
-    >
-      Clear
-    </button>
-  </div>
-          <audio 
-        ref={audioRef}
-        src={musicUrl}
-        loop={true}
-      />
-          {stories.length === 0 ? (
-            <EmptyState onFileUpload={handleFileUpload} />
-          ) : (
-            <div
-              className="story-container"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            >
-             <div className="story-slide">
-  <div className="media-wrapper">
-    <img
-      src={stories[currentIndex].url}
-      alt={`Slide ${currentIndex + 1}`}  // Changed from caption to slide number
-      className="media-content"
-      style={{
-        display: "block",
-        width: "100%",
-        height: "100%",
-        objectFit: "contain",
-      }}
-      loading="eager"
-    />
-  </div>
-</div>
-              <NavigationButtons
-                onPrevious={handlePrevious}
-                onNext={handleNext}
-                isFirstSlide={currentIndex === 0}
-                isLastSlide={currentIndex === stories.length - 1}
+    <>
+      {showLanding ? (
+        <GrooveGalleryLanding onCreateSlideshow={handleStartSlideshow} />
+      ) : (
+        <div className="app-container">
+          <div className="app-content">
+            <div className="slider-container">
+              <div className="title-bar">
+                <h1 className="slider-title">Groove Gallery</h1>
+                <button 
+                  onClick={handleClearSession}
+                  className="clear-button"
+                >
+                  Clear
+                </button>
+              </div>
+              <audio 
+                ref={audioRef}
+                src={musicUrl}
+                loop={true}
+              />
+              {stories.length === 0 ? (
+                <EmptyState onFileUpload={handleFileUpload} />
+              ) : (
+                <div
+                  className="story-container"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <div className="story-slide">
+                    <div className="media-wrapper">
+                      <img
+                        src={stories[currentIndex].url}
+                        alt={`Slide ${currentIndex + 1}`}
+                        className="media-content"
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "contain",
+                        }}
+                        loading="eager"
+                      />
+                    </div>
+                  </div>
+                  <NavigationButtons
+                    onPrevious={handlePrevious}
+                    onNext={handleNext}
+                    isFirstSlide={currentIndex === 0}
+                    isLastSlide={currentIndex === stories.length - 1}
+                  />
+                  <ProgressBar
+                    currentIndex={currentIndex}
+                    totalSlides={stories.length}
+                    onProgressClick={setCurrentIndex}
+                  />
+                </div>
+              )}
+
+              <BottomMenu
+                audioRef={audioRef}
+                onFileUpload={handleFileUpload}
+                onSaveSession={() => setShowExportModal(true)}
+                onPlayPause={handlePlayPause}
+                isPlaying={isPlaying}
+                duration={duration}
+                onDurationChange={setDuration}
+                onEdit={() => setShowEditPanel(!showEditPanel)} 
+                onMusicUpload={handleMusicUpload}
+                onBPMChange={handleBPMChange}
+                musicUrl={musicUrl}
+                bpm={bpm}
+                onStartPointChange={setMusicStartPoint}
+                musicStartPoint={musicStartPoint}
+                onMusicPanelToggle={() => setShowMusicPanel(!showMusicPanel)}
+                isLoopingEnabled={isLoopingEnabled}
+                setIsLoopingEnabled={setIsLoopingEnabled}
+                showEditPanel={showEditPanel}
+                setShowEditPanel={setShowEditPanel}
+                stories={stories}
+                setStories={setStories}  
+                handleDelete={handleDelete}
               />
 
+              {showEditPanel && (
+                <EditPanel
+                  stories={stories}
+                  onClose={() => setShowEditPanel(!showEditPanel)}  
+                  onReorder={setStories}
+                  onDelete={handleDelete}
+                />
+              )}
 
-              <ProgressBar
-                currentIndex={currentIndex}
-                totalSlides={stories.length}
-                onProgressClick={setCurrentIndex}
+              <ExportModal
+                isOpen={showExportModal}
+                progress={saveProgress}
+                message={progressMessage}
+                onClose={() => setShowExportModal(false)}
+                onExport={handleSaveSession}
+                isExporting={isExporting}
+              />
+
+              <ProgressModal
+                isOpen={showProgress}
+                progress={saveProgress}
+                message={progressMessage}
+              />
+              <ShareNotification 
+                isVisible={showShareNotification}
+                onClose={() => setShowShareNotification(false)}
               />
             </div>
-          )}
-
-          <BottomMenu
-            audioRef={audioRef}
-            onFileUpload={handleFileUpload}
-            onSaveSession={() => setShowExportModal(true)}
-            onPlayPause={handlePlayPause}
-            isPlaying={isPlaying}
-            duration={duration}
-            onDurationChange={setDuration}
-            onEdit={() => setShowEditPanel(!showEditPanel)} 
-            onMusicUpload={handleMusicUpload}
-            onBPMChange={handleBPMChange}
-            musicUrl={musicUrl}
-            bpm={bpm}
-            onStartPointChange={setMusicStartPoint}
-            musicStartPoint={musicStartPoint}
-            onMusicPanelToggle={() => setShowMusicPanel(!showMusicPanel)}
-            isLoopingEnabled={isLoopingEnabled}
-            setIsLoopingEnabled={setIsLoopingEnabled}
-            showEditPanel={showEditPanel}
-            setShowEditPanel={setShowEditPanel}
-            stories={stories}
-            setStories={setStories}  
-            handleDelete={handleDelete}
-          />
-
-{showEditPanel && (
-  <EditPanel
-    stories={stories}
-    onClose={() => setShowEditPanel(!showEditPanel)}  
-    onReorder={setStories}
-    onDelete={handleDelete}
-  />
-)}
-
-          <ExportModal
-            isOpen={showExportModal}
-            progress={saveProgress}
-            message={progressMessage}
-            onClose={() => setShowExportModal(false)}
-            onExport={handleSaveSession}
-            isExporting={isExporting}
-          />
-
-          <ProgressModal
-            isOpen={showProgress}
-            progress={saveProgress}
-            message={progressMessage}
-          />
-          <ShareNotification 
-            isVisible={showShareNotification}
-            onClose={() => setShowShareNotification(false)}
-          />
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 };
 
