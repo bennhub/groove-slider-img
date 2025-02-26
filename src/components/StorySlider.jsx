@@ -24,6 +24,9 @@ import {
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
 
+// Beat detect
+import { analyze } from "web-audio-beat-detector";
+
 //==============================================
 // UTILITIES / SERVICES
 //==============================================
@@ -77,16 +80,20 @@ const GrooveGalleryLanding = ({ onCreateSlideshow }) => {
         {/* Header with app title and info button only */}
         <div className="landing-header">
           <button className="info-button">
-            <span style={{ 
-              width: 24, 
-              height: 24, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              borderRadius: '50%',
-              border: '1px solid white',
-              fontSize: '16px' 
-            }}>i</span>
+            <span
+              style={{
+                width: 24,
+                height: 24,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "50%",
+                border: "1px solid white",
+                fontSize: "16px",
+              }}
+            >
+              i
+            </span>
           </button>
           <h1 className="app-title">The Groove Gallery</h1>
           {/* No clear button here */}
@@ -96,7 +103,7 @@ const GrooveGalleryLanding = ({ onCreateSlideshow }) => {
         <div className="retro-background">
           <div className="wave-pattern top"></div>
           <div className="wave-pattern bottom"></div>
-          
+
           {/* Central action button */}
           <button className="create-button" onClick={onCreateSlideshow}>
             CREATE A SLIDESHOW
@@ -106,7 +113,7 @@ const GrooveGalleryLanding = ({ onCreateSlideshow }) => {
         {/* Featured Style Section */}
         <div className="featured-section">
           <h2 className="section-title">Slide Shows that Groove to the Beat</h2>
-          
+
           <div className="style-card">
             <div className="style-preview">
               <div className="style-overlay">
@@ -126,7 +133,7 @@ const GrooveGalleryLanding = ({ onCreateSlideshow }) => {
 //==============================================
 // TAP TEMPO COMPONENT
 //==============================================
-const TapTempo = ({ onBPMChange }) => {
+const TapTempo = ({ onBPMChange, isAnalyzing }) => {
   const [taps, setTaps] = useState([]);
   const [currentBPM, setCurrentBPM] = useState(0);
 
@@ -159,15 +166,22 @@ const TapTempo = ({ onBPMChange }) => {
     }, 2000);
     return () => clearTimeout(timer);
   }, [taps]);
-
+  
   return (
     <div className="tap-tempo">
       <button onClick={handleTap} className="tap-button">
-  Tap Tempo
-  <span className="bpm-text">
-    {currentBPM > 0 ? `${currentBPM} BPM` : ""}
-  </span>
-</button>
+        Tap Tempo
+        <span className="bpm-text">
+          {currentBPM > 0 ? `${currentBPM} BPM` : ""}
+        </span>
+      </button>
+      
+      {isAnalyzing && (
+        <div className="bpm-analyzer">
+          <div className="spinner"></div>
+          <span>Analyzing beat...</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -181,38 +195,65 @@ const MusicPanel = ({
   currentBPM,
   onStartPointChange,
   audioRef,
-  musicUrl,  
-  musicStartPoint 
+  musicUrl,
+  musicStartPoint,
 }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
   const [duration, setDuration] = useState(0);
   const controlsRef = useRef(null);
-  const [fileName, setFileName] = useState('');
+  const [fileName, setFileName] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  //BPM detection handler
+  const detectBPM = async (audioUrl) => {
+    try {
+      // Create an audio context
+      const audioContext = new (window.AudioContext ||
+        window.webkitAudioContext)();
+
+      // Fetch the audio data
+      const response = await fetch(audioUrl);
+      const arrayBuffer = await response.arrayBuffer();
+
+      // Decode the audio data
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+      // Analyze the audio buffer to get the BPM
+      const tempo = await analyze(audioBuffer);
+
+      // Return the detected BPM (rounded to nearest integer)
+      return Math.round(tempo);
+    } catch (error) {
+      console.error("BPM detection failed:", error);
+      return 120; // Default fallback BPM
+    }
+  };
+
+  // Time Update handler
   const handleTimeUpdate = () => {
-    if (controlsRef.current) {  
+    if (controlsRef.current) {
       setCurrentTime(controlsRef.current.currentTime);
     }
   };
 
   useEffect(() => {
     if (controlsRef.current && audioRef.current) {
-      controlsRef.current.addEventListener('timeupdate', handleTimeUpdate);
-      controlsRef.current.addEventListener('timeupdate', (e) => {
+      controlsRef.current.addEventListener("timeupdate", handleTimeUpdate);
+      controlsRef.current.addEventListener("timeupdate", (e) => {
         audioRef.current.currentTime = e.target.currentTime;
       });
-      
-      controlsRef.current.addEventListener('loadedmetadata', () => {
+
+      controlsRef.current.addEventListener("loadedmetadata", () => {
         setDuration(controlsRef.current.duration);
       });
     }
 
     return () => {
       if (controlsRef.current && audioRef.current) {
-        controlsRef.current.removeEventListener('timeupdate', handleTimeUpdate);
-        controlsRef.current.removeEventListener('timeupdate', (e) => {
+        controlsRef.current.removeEventListener("timeupdate", handleTimeUpdate);
+        controlsRef.current.removeEventListener("timeupdate", (e) => {
           audioRef.current.currentTime = e.target.currentTime;
         });
       }
@@ -260,7 +301,21 @@ const MusicPanel = ({
     const file = e.target.files[0];
     if (file) {
       const url = URL.createObjectURL(file);
-      setFileName(file.name);  // Store the actual file name
+      setFileName(file.name);
+      setIsAnalyzing(true); // Show analyzing indicator
+      
+      // Start BPM detection
+      detectBPM(url)
+        .then((detectedBPM) => {
+          console.log(`Detected BPM: ${detectedBPM}`);
+          onBPMChange(detectedBPM);
+          setIsAnalyzing(false); // Hide analyzing indicator
+        })
+        .catch(err => {
+          console.error("BPM detection failed:", err);
+          setIsAnalyzing(false); // Hide analyzing indicator
+        });
+      
       onUpload(url);
     }
   }}
@@ -285,27 +340,20 @@ const MusicPanel = ({
         </div>
 
         <div className="music-player">
-          <audio 
+          <audio
             ref={controlsRef}
             src={musicUrl}
             onTimeUpdate={handleTimeUpdate}
           />
-          
-          {musicUrl && (
-  <div className="music-info">
-    <span>{fileName || 'Track Title'}</span>
-  </div>
-)}
 
-          <button 
-            className="audio-control-button"
-            onClick={handlePlayPause}
-          >
-            {isPlaying ? (
-              <Pause size={32} />
-            ) : (
-              <Play size={32} />
-            )}
+          {musicUrl && (
+            <div className="music-info">
+              <span>{fileName || "Track Title"}</span>
+            </div>
+          )}
+
+          <button className="audio-control-button" onClick={handlePlayPause}>
+            {isPlaying ? <Pause size={32} /> : <Play size={32} />}
           </button>
 
           <div className="audio-progress">
@@ -327,9 +375,11 @@ const MusicPanel = ({
                 }}
                 className="progress-slider"
               />
-              <div 
+              <div
                 className="start-point-marker"
-                style={{ left: `${(musicStartPoint / (duration || 1)) * 100}%` }}
+                style={{
+                  left: `${(musicStartPoint / (duration || 1)) * 100}%`,
+                }}
               />
             </div>
           </div>
@@ -484,10 +534,16 @@ const ShareNotification = ({ isVisible, onClose }) => {
         <h3>Export Complete! 🎉</h3>
         <p>Share your creation:</p>
         <div className="share-buttons">
-          <button onClick={() => window.open('https://instagram.com', '_blank')} className="share-button instagram">
+          <button
+            onClick={() => window.open("https://instagram.com", "_blank")}
+            className="share-button instagram"
+          >
             Share to Instagram
           </button>
-          <button onClick={() => window.open('https://tiktok.com', '_blank')} className="share-button tiktok">
+          <button
+            onClick={() => window.open("https://tiktok.com", "_blank")}
+            className="share-button tiktok"
+          >
             Share to TikTok
           </button>
         </div>
@@ -546,23 +602,27 @@ const ExportModal = ({
                   <input
                     type="checkbox"
                     checked={isExportLoopEnabled}
-                    onChange={() => setIsExportLoopEnabled(!isExportLoopEnabled)}
+                    onChange={() =>
+                      setIsExportLoopEnabled(!isExportLoopEnabled)
+                    }
                   />
                 </label>
               </div>
 
               {isExportLoopEnabled && (
-               <div className="input-container">
-               <label>Loop Duration (seconds):</label>
-               <input
-                 type="number"
-                 min="5"
-                 max="300"
-                 value={exportLoopDuration}
-                 onChange={(e) => setExportLoopDuration(Number(e.target.value))}
-                 className="loop-duration-input"
-               />
-             </div>
+                <div className="input-container">
+                  <label>Loop Duration (seconds):</label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="300"
+                    value={exportLoopDuration}
+                    onChange={(e) =>
+                      setExportLoopDuration(Number(e.target.value))
+                    }
+                    className="loop-duration-input"
+                  />
+                </div>
               )}
             </div>
 
@@ -578,16 +638,18 @@ const ExportModal = ({
               </button>
 
               <button
-  className="action-button download"
-  onClick={() => onExport({
-    resolution, 
-    isExportLoopEnabled, 
-    exportLoopDuration
-  })}
->
-  <Download className="button-icon" />
-  Export
-</button>
+                className="action-button download"
+                onClick={() =>
+                  onExport({
+                    resolution,
+                    isExportLoopEnabled,
+                    exportLoopDuration,
+                  })
+                }
+              >
+                <Download className="button-icon" />
+                Export
+              </button>
             </div>
           </>
         ) : (
@@ -623,32 +685,32 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
   // Handle position change for an image
   const handlePositionChange = (index, value) => {
     // Handle empty or invalid input
-    if (value === '' || isNaN(value)) {
+    if (value === "" || isNaN(value)) {
       const newPositions = [...positions];
-      newPositions[index] = '';  // Allow empty state while typing
+      newPositions[index] = ""; // Allow empty state while typing
       setPositions(newPositions);
-      return;  // Don't reorder until we have a valid number
+      return; // Don't reorder until we have a valid number
     }
-  
+
     const newPosition = parseInt(value);
     // Only reorder if we have a valid position
     if (newPosition >= 1 && newPosition <= stories.length) {
       const validPosition = Math.min(Math.max(1, newPosition), stories.length);
-      
+
       // Create new positions array
       const newPositions = [...positions];
       newPositions[index] = validPosition;
       setPositions(newPositions);
-  
+
       // Reorder the stories based on new position
       const newStories = [...stories];
       const movedItem = newStories.splice(index, 1)[0];
       newStories.splice(validPosition - 1, 0, movedItem);
-      
+
       // Update positions to reflect new order
       const updatedPositions = newStories.map((_, i) => i + 1);
       setPositions(updatedPositions);
-      
+
       // Call parent's reorder function
       onReorder(newStories);
     }
@@ -662,38 +724,40 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
           <X size={20} />
         </button>
       </div>
-      
+
       {/* Thumbnails section */}
       <div className="thumbnails-container">
         {stories.map((story, index) => (
           <div key={index} className="thumbnail">
-          <div className="thumbnail-content">
-            <button
-              className="delete-button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(index);
-              }}
-            >
-              <X size={16} />
-            </button>
-            <div className="image-thumbnail">
-              <img src={story.url} alt={`Slide ${index + 1}`} />
+            <div className="thumbnail-content">
+              <button
+                className="delete-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(index);
+                }}
+              >
+                <X size={16} />
+              </button>
+              <div className="image-thumbnail">
+                <img src={story.url} alt={`Slide ${index + 1}`} />
+              </div>
+            </div>
+            {/* Moved reorder-control outside thumbnail-content */}
+            <div className="reorder-control">
+              <span>Reorder</span>
+              <input
+                type="number"
+                min="1"
+                max={stories.length}
+                value={positions[index]}
+                onChange={(e) =>
+                  handlePositionChange(index, parseInt(e.target.value))
+                }
+                className="position-input"
+              />
             </div>
           </div>
-          {/* Moved reorder-control outside thumbnail-content */}
-          <div className="reorder-control">
-            <span>Reorder</span>
-            <input
-              type="number"
-              min="1"
-              max={stories.length}
-              value={positions[index]}
-              onChange={(e) => handlePositionChange(index, parseInt(e.target.value))}
-              className="position-input"
-            />
-          </div>
-        </div>
         ))}
       </div>
     </div>
@@ -724,7 +788,7 @@ const BottomMenu = ({
   setShowEditPanel,
   stories,
   setStories,
-  handleDelete
+  handleDelete,
 }) => {
   const [showDurationPanel, setShowDurationPanel] = useState(false);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
@@ -732,8 +796,8 @@ const BottomMenu = ({
 
   useEffect(() => {
     const barOptions = [0.125, 0.25, 0.5, 1, 2, 4, 8, 16];
-    const matchedBar = barOptions.find(option => 
-      Math.abs((duration * bpm) / (4 * 60) - option) < 0.01
+    const matchedBar = barOptions.find(
+      (option) => Math.abs((duration * bpm) / (4 * 60) - option) < 0.01
     );
     if (matchedBar) {
       setSelectedBar(matchedBar);
@@ -768,7 +832,7 @@ const BottomMenu = ({
   // Function to toggle duration panel
   const toggleDurationPanel = () => {
     setShowDurationPanel(!showDurationPanel);
-    if (showMusicPanel) setShowMusicPanel(false); 
+    if (showMusicPanel) setShowMusicPanel(false);
     if (showEditPanel) setShowEditPanel(false);
   };
 
@@ -838,7 +902,7 @@ const BottomMenu = ({
 
       {showMusicPanel && (
         <MusicPanel
-          audioRef={audioRef} 
+          audioRef={audioRef}
           onUpload={onMusicUpload}
           onBPMChange={onBPMChange}
           currentBPM={bpm}
@@ -859,7 +923,7 @@ const BottomMenu = ({
 
       <div className="bottom-menu-buttons">
         <button
-          className={`bottom-menu-button ${showDurationPanel ? 'active' : ''}`}
+          className={`bottom-menu-button ${showDurationPanel ? "active" : ""}`}
           onClick={toggleDurationPanel}
         >
           <Clock className="bottom-menu-icon" />
@@ -867,15 +931,15 @@ const BottomMenu = ({
         </button>
 
         <button
-          className={`bottom-menu-button ${showMusicPanel ? 'active' : ''}`}
+          className={`bottom-menu-button ${showMusicPanel ? "active" : ""}`}
           onClick={toggleMusicPanel}
         >
           <Music className="bottom-menu-icon" />
           <span className="bottom-menu-text">Music</span>
         </button>
 
-        <button 
-          className={`bottom-menu-button ${isPlaying ? 'active' : ''}`} 
+        <button
+          className={`bottom-menu-button ${isPlaying ? "active" : ""}`}
           onClick={onPlayPause}
         >
           {isPlaying ? (
@@ -889,8 +953,8 @@ const BottomMenu = ({
         </button>
 
         <div className="bottom-menu-right-group">
-          <button 
-            className={`bottom-menu-button ${showEditPanel ? 'active' : ''}`}
+          <button
+            className={`bottom-menu-button ${showEditPanel ? "active" : ""}`}
             onClick={toggleEditPanel}
           >
             <Edit className="bottom-menu-icon" />
@@ -924,7 +988,6 @@ const BottomMenu = ({
 // STORY SLIDER COMPONENT - State & Handlers
 //==============================================
 const StorySlider = () => {
-
   const [showLanding, setShowLanding] = useState(true);
   // Core State
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -940,7 +1003,6 @@ const StorySlider = () => {
 
   // Notifications State
   const [showShareNotification, setShowShareNotification] = useState(false);
-
 
   // Export State
   const [isExporting, setIsExporting] = useState(false);
@@ -1029,7 +1091,7 @@ const StorySlider = () => {
 
     const newStories = files.map((file) => ({
       type: "image",
-      url: URL.createObjectURL(file)
+      url: URL.createObjectURL(file),
     }));
 
     setStories((prevStories) => [...prevStories, ...newStories]);
@@ -1048,9 +1110,10 @@ const StorySlider = () => {
   const handleBPMChange = (newBPM) => {
     setBpm(newBPM);
     const barOptions = [0.125, 0.25, 0.5, 1, 2, 4, 8, 16];
-    const currentBarOption = barOptions.find(option => 
-      Math.abs((duration * newBPM) / (4 * 60) - option) < 0.01
-    ) || 1; 
+    const currentBarOption =
+      barOptions.find(
+        (option) => Math.abs((duration * newBPM) / (4 * 60) - option) < 0.01
+      ) || 1;
     const newDuration = (currentBarOption * 4 * 60) / newBPM;
     setDuration(newDuration);
   };
@@ -1106,10 +1169,13 @@ const StorySlider = () => {
     }
   }, [duration]);
 
-
-// Clear Session
+  // Clear Session
   const handleClearSession = () => {
-    if (window.confirm('Are you sure you want to clear all content and start fresh?')) {
+    if (
+      window.confirm(
+        "Are you sure you want to clear all content and start fresh?"
+      )
+    ) {
       // Clear images
       setStories([]);
       // Reset index
@@ -1118,7 +1184,7 @@ const StorySlider = () => {
       setMusicUrl(null);
       if (audioRef.current) {
         audioRef.current.pause();
-        audioRef.current.src = '';
+        audioRef.current.src = "";
       }
       // Reset playback state
       setIsPlaying(false);
@@ -1187,16 +1253,16 @@ const StorySlider = () => {
   // Export functionality
   const handleSaveSession = async (exportSettings) => {
     // Destructure export settings with default values
-    const { 
-      resolution = "1080x1920", 
-      isExportLoopEnabled = false, 
-      exportLoopDuration = 0 
+    const {
+      resolution = "1080x1920",
+      isExportLoopEnabled = false,
+      exportLoopDuration = 0,
     } = exportSettings;
-  
+
     try {
       let fileHandle;
       let fileName = "slideshow.mp4";
-  
+
       // Existing file handle logic remains the same
       if (!("showSaveFilePicker" in window)) {
         const link = document.createElement("a");
@@ -1224,38 +1290,43 @@ const StorySlider = () => {
           ],
         });
       }
-  
+
       setIsExporting(true);
       setShowProgress(true);
       setProgressMessage("Preparing to export video...");
       setSaveProgress(0);
-  
+
       if (!ffmpeg.loaded) {
         await loadFFmpeg();
       }
-  
+
       let tempFiles = [];
       const processedFiles = [];
       const [width, height] = resolution.split("x").map(Number);
-  
+
       // Calculate total slideshow duration and loop parameters
       const totalSlideshowDuration = stories.length * duration;
-      const loopCount = isExportLoopEnabled && exportLoopDuration > 0
-        ? Math.ceil(exportLoopDuration / totalSlideshowDuration)
-        : 1;
-  
+      const loopCount =
+        isExportLoopEnabled && exportLoopDuration > 0
+          ? Math.ceil(exportLoopDuration / totalSlideshowDuration)
+          : 1;
+
       // Process images multiple times based on loop settings
       for (let loop = 0; loop < loopCount; loop++) {
         for (let i = 0; i < stories.length; i++) {
           const story = stories[i];
-          setProgressMessage(`Processing image ${i + 1}/${stories.length} (Loop ${loop + 1}/${loopCount})`);
-          
+          setProgressMessage(
+            `Processing image ${i + 1}/${stories.length} (Loop ${
+              loop + 1
+            }/${loopCount})`
+          );
+
           const inputName = `input_${loop}_${i}.png`;
           const outputName = `processed_${loop}_${i}.mp4`;
-  
+
           await ffmpeg.writeFile(inputName, await fetchFile(story.url));
           tempFiles.push(inputName);
-  
+
           await ffmpeg.exec([
             "-loop",
             "1",
@@ -1275,25 +1346,28 @@ const StorySlider = () => {
             "ultrafast",
             outputName,
           ]);
-  
+
           tempFiles.push(outputName);
           processedFiles.push({ name: outputName });
-          
+
           // Update progress, accounting for multiple loops
-          setSaveProgress(((loop * stories.length + i + 1) / (loopCount * stories.length)) * 75);
+          setSaveProgress(
+            ((loop * stories.length + i + 1) / (loopCount * stories.length)) *
+              75
+          );
         }
       }
-  
+
       // Write concatenation list
       await ffmpeg.writeFile(
         "list.txt",
         processedFiles.map((f) => `file '${f.name}'`).join("\n")
       );
       tempFiles.push("list.txt");
-  
+
       setProgressMessage("Creating final video...");
       setSaveProgress(85);
-  
+
       // Concatenate processed files
       await ffmpeg.exec([
         "-f",
@@ -1307,7 +1381,7 @@ const StorySlider = () => {
         "temp_output.mp4",
       ]);
       tempFiles.push("temp_output.mp4");
-  
+
       // Add Background Music (existing logic remains the same)
       if (musicUrl) {
         setProgressMessage("Adding background music...");
@@ -1316,7 +1390,7 @@ const StorySlider = () => {
           await ffmpeg.exec([
             "-i",
             "temp_output.mp4",
-            "-ss", 
+            "-ss",
             String(musicStartPoint),
             "-i",
             "background.mp3",
@@ -1333,7 +1407,7 @@ const StorySlider = () => {
             "192k",
             "final_output.mp4",
           ]);
-  
+
           await ffmpeg.deleteFile("background.mp3");
           await ffmpeg.deleteFile("temp_output.mp4");
         } catch (error) {
@@ -1355,18 +1429,18 @@ const StorySlider = () => {
           "final_output.mp4",
         ]);
       }
-  
+
       setProgressMessage("Preparing download...");
       setSaveProgress(95);
-  
+
       // Read and save final file (existing logic remains the same)
       const data = await ffmpeg.readFile("final_output.mp4");
       setSaveProgress(100);
-  
+
       const writable = await fileHandle.createWritable();
       await writable.write(new Blob([data.buffer], { type: "video/mp4" }));
       await writable.close();
-  
+
       setShowProgress(false);
       setIsExporting(false);
       setShowShareNotification(true);
@@ -1389,18 +1463,11 @@ const StorySlider = () => {
             <div className="slider-container">
               <div className="title-bar">
                 <h1 className="slider-title">The Groove Gallery</h1>
-                <button 
-                  onClick={handleClearSession}
-                  className="clear-button"
-                >
+                <button onClick={handleClearSession} className="clear-button">
                   Clear
                 </button>
               </div>
-              <audio 
-                ref={audioRef}
-                src={musicUrl}
-                loop={true}
-              />
+              <audio ref={audioRef} src={musicUrl} loop={true} />
               {stories.length === 0 ? (
                 <EmptyState onFileUpload={handleFileUpload} />
               ) : (
@@ -1448,7 +1515,7 @@ const StorySlider = () => {
                 isPlaying={isPlaying}
                 duration={duration}
                 onDurationChange={setDuration}
-                onEdit={() => setShowEditPanel(!showEditPanel)} 
+                onEdit={() => setShowEditPanel(!showEditPanel)}
                 onMusicUpload={handleMusicUpload}
                 onBPMChange={handleBPMChange}
                 musicUrl={musicUrl}
@@ -1461,14 +1528,14 @@ const StorySlider = () => {
                 showEditPanel={showEditPanel}
                 setShowEditPanel={setShowEditPanel}
                 stories={stories}
-                setStories={setStories}  
+                setStories={setStories}
                 handleDelete={handleDelete}
               />
 
               {showEditPanel && (
                 <EditPanel
                   stories={stories}
-                  onClose={() => setShowEditPanel(!showEditPanel)}  
+                  onClose={() => setShowEditPanel(!showEditPanel)}
                   onReorder={setStories}
                   onDelete={handleDelete}
                 />
@@ -1488,7 +1555,7 @@ const StorySlider = () => {
                 progress={saveProgress}
                 message={progressMessage}
               />
-              <ShareNotification 
+              <ShareNotification
                 isVisible={showShareNotification}
                 onClose={() => setShowShareNotification(false)}
               />
