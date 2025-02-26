@@ -72,55 +72,53 @@ const loadFFmpeg = async () => {
 //==============================================
 const GrooveGalleryLanding = ({ onCreateSlideshow }) => {
   return (
-    <div className="landing-container">
-      {/* Header with app title and info button */}
-      <div className="landing-header">
-        <button className="info-button">
-          <Info size={24} />
-        </button>
-        <h1 className="app-title">Groove Gallery</h1>
-        <button className="clear-button">Clear</button>
-      </div>
+    <div className="landing-wrapper">
+      <div className="landing-container">
+        {/* Header with app title and info button only */}
+        <div className="landing-header">
+          <button className="info-button">
+            <span style={{ 
+              width: 24, 
+              height: 24, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              borderRadius: '50%',
+              border: '1px solid white',
+              fontSize: '16px' 
+            }}>i</span>
+          </button>
+          <h1 className="app-title">The Groove Gallery</h1>
+          {/* No clear button here */}
+        </div>
 
-      {/* Main background with 70's style patterns */}
-      <div className="retro-background">
-        <div className="wave-pattern top"></div>
-        <div className="wave-pattern bottom"></div>
-        
-        {/* Central action button */}
-        <button className="create-button" onClick={onCreateSlideshow}>
-          CREATE A SLIDESHOW
-        </button>
-      </div>
-
-      {/* Featured Style Section */}
-      <div className="featured-section">
-        <h2 className="section-title">Featured Style</h2>
-        
-        <div className="style-card">
-          <div className="style-preview">
-            <div className="style-overlay">
-              <div className="style-name">Groove Gallery</div>
-            </div>
-          </div>
-          <button className="use-style-button">
-            <Music size={18} />
-            <span>USE THIS STYLE</span>
+        {/* Main background with 70's style patterns */}
+        <div className="retro-background">
+          <div className="wave-pattern top"></div>
+          <div className="wave-pattern bottom"></div>
+          
+          {/* Central action button */}
+          <button className="create-button" onClick={onCreateSlideshow}>
+            CREATE A SLIDESHOW
           </button>
         </div>
-      </div>
 
-      {/* Bottom Navigation */}
-      <div className="landing-nav">
-        <button className="nav-button active">
-          <div className="nav-icon home-icon"></div>
-        </button>
-        <button className="nav-button">
-          <div className="nav-icon plus-icon"></div>
-        </button>
-        <button className="nav-button">
-          <div className="nav-icon profile-icon"></div>
-        </button>
+        {/* Featured Style Section */}
+        <div className="featured-section">
+          <h2 className="section-title">Slide Shows that Groove to the Beat</h2>
+          
+          <div className="style-card">
+            <div className="style-preview">
+              <div className="style-overlay">
+                <div className="style-name">Welcome to The Groove Gallery</div>
+              </div>
+            </div>
+            <button className="use-style-button">
+              <Music size={18} />
+              <span>Beat match music to your photo gallery</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -767,6 +765,27 @@ const BottomMenu = ({
     { value: 16, label: "16 Bars" },
   ];
 
+  // Function to toggle duration panel
+  const toggleDurationPanel = () => {
+    setShowDurationPanel(!showDurationPanel);
+    if (showMusicPanel) setShowMusicPanel(false); 
+    if (showEditPanel) setShowEditPanel(false);
+  };
+
+  // Function to toggle music panel
+  const toggleMusicPanel = () => {
+    setShowMusicPanel(!showMusicPanel);
+    if (showDurationPanel) setShowDurationPanel(false);
+    if (showEditPanel) setShowEditPanel(false);
+  };
+
+  // Function to toggle edit panel
+  const toggleEditPanel = () => {
+    setShowEditPanel(!showEditPanel);
+    if (showDurationPanel) setShowDurationPanel(false);
+    if (showMusicPanel) setShowMusicPanel(false);
+  };
+
   return (
     <div className="bottom-menu">
       {showDurationPanel && (
@@ -840,30 +859,25 @@ const BottomMenu = ({
 
       <div className="bottom-menu-buttons">
         <button
-          className="bottom-menu-button"
-          onClick={() => {
-            setShowDurationPanel(!showDurationPanel);
-            setShowMusicPanel(false);
-            setShowEditPanel(false);
-          }}
+          className={`bottom-menu-button ${showDurationPanel ? 'active' : ''}`}
+          onClick={toggleDurationPanel}
         >
           <Clock className="bottom-menu-icon" />
           <span className="bottom-menu-text">Speed</span>
         </button>
 
         <button
-          className="bottom-menu-button"
-          onClick={() => {
-            setShowMusicPanel(!showMusicPanel);
-            setShowDurationPanel(false);
-            setShowEditPanel(false);
-          }}
+          className={`bottom-menu-button ${showMusicPanel ? 'active' : ''}`}
+          onClick={toggleMusicPanel}
         >
           <Music className="bottom-menu-icon" />
           <span className="bottom-menu-text">Music</span>
         </button>
 
-        <button className="bottom-menu-button" onClick={onPlayPause}>
+        <button 
+          className={`bottom-menu-button ${isPlaying ? 'active' : ''}`} 
+          onClick={onPlayPause}
+        >
           {isPlaying ? (
             <Pause className="bottom-menu-icon" />
           ) : (
@@ -876,12 +890,8 @@ const BottomMenu = ({
 
         <div className="bottom-menu-right-group">
           <button 
-            className="bottom-menu-button" 
-            onClick={() => {
-              setShowEditPanel(!showEditPanel);
-              setShowMusicPanel(false);
-              setShowDurationPanel(false);
-            }}
+            className={`bottom-menu-button ${showEditPanel ? 'active' : ''}`}
+            onClick={toggleEditPanel}
           >
             <Edit className="bottom-menu-icon" />
             <span className="bottom-menu-text">Edit</span>
@@ -1378,7 +1388,7 @@ const StorySlider = () => {
           <div className="app-content">
             <div className="slider-container">
               <div className="title-bar">
-                <h1 className="slider-title">Groove Gallery</h1>
+                <h1 className="slider-title">The Groove Gallery</h1>
                 <button 
                   onClick={handleClearSession}
                   className="clear-button"

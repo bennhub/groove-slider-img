@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&display=swap');
 /* Global Variables */
 :root {
   /* Colors */
@@ -121,15 +122,24 @@ body {
 }
 
 .slider-title {
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-family: var(--font-family-primary);
-  text-align: center;
+  color: var(--color-background-primary);
+  font-size: 20px;
+  font-family: 'Bungee Shade', cursive;
+  text-align: left; /* Changed from center to left */
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 2px;
+  margin-top: -20px;
   margin-bottom: var(--spacing-xl);
-  text-shadow: 0 0 10px rgba(236, 236, 37, 0.839);
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 5px 20px; 
+  position: relative;
+  border-radius: 12px; 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); 
+  width: 70%; /* Added width */
+  max-width: 320px; /* Maximum width */
+  margin-left: -15px; /* Changed from auto to a specific value */
+  margin-right: auto; 
 }
 
 .media-content {
@@ -140,22 +150,25 @@ body {
   will-change: opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  background: var(--color-background-primary);
+  background-color: rgb(255, 251, 223);
 }
 
 /* Landing Page */
-/* Landing Page Styles */
 .landing-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100%;
+  max-width: 390px; /* Match your app container width */
+  margin: 0 auto; /* Center horizontally */
   background-color: #111;
   color: #fff;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
 
+/* Header Styles */
 .landing-header {
   display: flex;
   justify-content: space-between;
@@ -166,11 +179,11 @@ body {
 }
 
 .app-title {
-  font-family: 'Arial', sans-serif;
-  font-size: 28px;
+  font-family: 'Bungee Shade', cursive;
+  font-size: 30px;
   font-weight: bold;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   background: linear-gradient(45deg, #FF6B6B, #FFD166, #06D6A0);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -214,6 +227,15 @@ body {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%2306D6A0" d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,165.3C960,171,1056,149,1152,160C1248,171,1344,213,1392,234.7L1440,256L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
 }
 
+.landing-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #0d0d0d;
+}
+
 .create-button {
   padding: 18px 36px;
   font-size: 18px;
@@ -225,7 +247,8 @@ body {
   border: none;
   border-radius: 50px;
   cursor: pointer;
-  z-index: 2;
+  z-index: 20; /* Increased z-index to ensure clickability */
+  position: relative; /* Added for z-index to work properly */
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
 }
@@ -260,7 +283,7 @@ body {
 
 .style-preview {
   height: 220px;
-  background-image: url('https://images.unsplash.com/photo-1600081728723-c8aa2ee3236a');
+  background-image: url('/src/assets/discoSplash.jpeg');
   background-size: cover;
   background-position: center;
   position: relative;
@@ -310,53 +333,13 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.nav-button {
-  background: none;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  position: relative;
-}
-
-.nav-button.active:after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  background-color: #FFD166;
-  border-radius: 50%;
-}
-
-.nav-icon {
-  width: 24px;
-  height: 24px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-.home-icon {
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>');
-}
-
-.plus-icon {
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>');
-}
-
-.profile-icon {
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>');
-}
-
 /* Media Containers */
 .media-wrapper {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--color-background-primary);
+  background: var(--color-accent);
 }
 
 .media-preview {
@@ -459,16 +442,19 @@ body {
 }
 
 /* Empty State and File Upload */
+/* 
 .empty-state {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100%;
   min-height: 300px;
-  background: #fffcfc;
+  background-image: url('/src/assets/wallapaper.jpg');
+  background-size: cover;
+  background-position: center;
   border-radius: var(--border-radius-lg);
   border: 2px solid var(--color-border-primary);
-}
+}*/
 
 .file-upload-label {
   display: flex;
@@ -480,7 +466,7 @@ body {
   padding: 32px;
   border-radius: 20px;
   border: 1px solid var(--color-border-primary);
-  background: rgb(245, 240, 240);
+  background: rgba(245, 240, 240, 0.423);
   transition: all var(--transition-standard);
 }
 
@@ -819,7 +805,6 @@ body {
 }
 
 .bottom-menu-button {
-  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -827,14 +812,27 @@ body {
   padding: var(--spacing-xs);
   cursor: pointer;
   color: var(--color-text-primary);
-  transition: transform var(--transition-fast);
+  transition: all var(--transition-fast);
   background: none;
   border: none;
 }
 
+/* Button hover state */
 .bottom-menu-button:hover {
   transform: scale(1.1);
   background: rgba(50, 205, 50, 0.1);
+}
+
+/* Button active state - when panel is open */
+.bottom-menu-button.active {
+  background: rgba(255, 165, 0, 0.2);
+  color: #FF8C00;
+  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.5);
+}
+
+/* When active, change the icon color too */
+.bottom-menu-button.active .bottom-menu-icon {
+  color: #FF8C00;
 }
 
 .bottom-menu-icon {
@@ -1616,8 +1614,8 @@ body {
 
 .clear-button {
   position: absolute;
-  top: -0.1rem;
-  right: 1rem;
+  top: 10px;
+  right: 0rem;
   background: var(--color-secondary);
   color: white;
   border: 1px solid var(--color-border-primary);
