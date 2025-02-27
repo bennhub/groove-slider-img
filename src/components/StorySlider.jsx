@@ -24,6 +24,9 @@ import {
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
 
+// WavformVisualizer
+import WaveformVisualizer from './WaveformVisualizer';
+
 // Beat detect
 import { analyze } from "web-audio-beat-detector";
 
@@ -189,6 +192,9 @@ const TapTempo = ({ onBPMChange, isAnalyzing }) => {
 //==============================================
 // MUSIC PANEL COMPONENT
 //==============================================
+//==============================================
+// MUSIC PANEL COMPONENT
+//==============================================
 const MusicPanel = ({
   onUpload,
   onBPMChange,
@@ -271,16 +277,6 @@ const MusicPanel = ({
     }
   };
 
-  const handleSetStartPoint = () => {
-    if (controlsRef.current) {
-      const newTime = controlsRef.current.currentTime;
-      onStartPointChange(newTime);
-      if (audioRef.current) {
-        audioRef.current.currentTime = newTime;
-      }
-    }
-  };
-
   const formatTime = (timeInSeconds) => {
     const minutes = Math.floor(timeInSeconds / 60);
     const seconds = Math.floor(timeInSeconds % 60);
@@ -295,37 +291,43 @@ const MusicPanel = ({
             <Music className="icon" />
             <span>Upload Music</span>
             <input
-  type="file"
-  accept="audio/*"
-  onChange={(e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setFileName(file.name);
-      setIsAnalyzing(true); // Show analyzing indicator
-      
-      // Start BPM detection
-      detectBPM(url)
-        .then((detectedBPM) => {
-          console.log(`Detected BPM: ${detectedBPM}`);
-          onBPMChange(detectedBPM);
-          setIsAnalyzing(false); // Hide analyzing indicator
-        })
-        .catch(err => {
-          console.error("BPM detection failed:", err);
-          setIsAnalyzing(false); // Hide analyzing indicator
-        });
-      
-      onUpload(url);
-    }
-  }}
-  className="hidden-input"
-/>
+              type="file"
+              accept="audio/*"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const url = URL.createObjectURL(file);
+                  setFileName(file.name);
+                  setIsAnalyzing(true); // Show analyzing indicator
+                  
+                  // Start BPM detection
+                  detectBPM(url)
+                    .then((detectedBPM) => {
+                      console.log(`Detected BPM: ${detectedBPM}`);
+                      onBPMChange(detectedBPM);
+                      setIsAnalyzing(false); // Hide analyzing indicator
+                    })
+                    .catch(err => {
+                      console.error("BPM detection failed:", err);
+                      setIsAnalyzing(false); // Hide analyzing indicator
+                    });
+                  
+                  onUpload(url);
+                }
+              }}
+              className="hidden-input"
+            />
           </label>
         </div>
 
         <div className="bpm-control">
           <TapTempo onBPMChange={onBPMChange} />
+          {isAnalyzing && (
+            <div className="bpm-analyzer">
+              <Loader className="spinner" size={18} />
+              <span>Analyzing beat...</span>
+            </div>
+          )}
           <div className="manual-bpm">
             <label>Manual BPM:</label>
             <input
@@ -356,32 +358,41 @@ const MusicPanel = ({
             {isPlaying ? <Pause size={32} /> : <Play size={32} />}
           </button>
 
+          {/* Add waveform visualizer here */}
+          {musicUrl && (
+    <WaveformVisualizer 
+      audioUrl={musicUrl}
+      onStartPointChange={(time) => {
+        onStartPointChange(time);
+        if (controlsRef.current) {
+          controlsRef.current.currentTime = time;
+        }
+      }}
+
+      initialStartPoint={musicStartPoint}
+
+    />
+  )}
+
+          {/* Simple audio progress display - without start point marker */}
           <div className="audio-progress">
             <div className="time-display">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
-            <div className="progress-bar-container">
-              <input
-                type="range"
-                min="0"
-                max={duration || 100}
-                value={currentTime}
-                onChange={(e) => {
-                  const time = parseFloat(e.target.value);
-                  if (controlsRef.current) {
-                    controlsRef.current.currentTime = time;
-                  }
-                }}
-                className="progress-slider"
-              />
-              <div
-                className="start-point-marker"
-                style={{
-                  left: `${(musicStartPoint / (duration || 1)) * 100}%`,
-                }}
-              />
-            </div>
+            <input
+              type="range"
+              min="0"
+              max={duration || 100}
+              value={currentTime}
+              onChange={(e) => {
+                const time = parseFloat(e.target.value);
+                if (controlsRef.current) {
+                  controlsRef.current.currentTime = time;
+                }
+              }}
+              className="progress-slider"
+            />
           </div>
 
           <div className="volume-control">
@@ -403,17 +414,7 @@ const MusicPanel = ({
             />
           </div>
 
-          <div className="start-point-controls">
-            <div className="start-point-time">
-              Start Point: {formatTime(musicStartPoint)}
-            </div>
-            <button
-              className="set-start-point-button"
-              onClick={handleSetStartPoint}
-            >
-              Set Start Point
-            </button>
-          </div>
+          {/* Removed the old start-point-controls section */}
         </div>
       </div>
     </div>

@@ -1286,14 +1286,7 @@ body {
   border: none;
 }
 
-.start-point-marker {
-  position: absolute;
-  width: 4px;
-  height: 20px;
-  background: #ef3f0e;
-  border-radius: 2px;
-  pointer-events: none;
-}
+
 
 /* Volume Control */
 .volume-control {
@@ -1320,39 +1313,6 @@ body {
   background: var(--color-secondary);
   cursor: pointer;
   border: none;
-}
-
-/* Start Point Controls */
-.start-point-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
-}
-
-.start-point-time {
-  font-size: 15px;
-  font-family: var(--font-family-primary);
-  color: #232323;
-  border: 1px dotted var(--color-border-primary);
-  padding: var(--spacing-sm);
-}
-
-.set-start-point-button {
-  width: 100%;
-  padding: var(--spacing-md);
-  background: var(--color-secondary);
-  color: white;
-  border: none;
-  border-radius: var(--border-radius-sm);
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-}
-
-.set-start-point-button:hover {
-  background: var(--color-secondary-dark);
 }
 
 /* Loop Controls */
@@ -1436,6 +1396,144 @@ body {
 
 .loop-toggle input[type="checkbox"]:focus {
   box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+}
+
+/*wave form */
+/* Waveform Visualizer Styles - Instagram Style */
+.waveform-container {
+  width: 100%;
+  padding: 10px;
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  margin: 10px 0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.waveform-canvas-container {
+  position: relative;
+  width: 100%;
+  cursor: grab;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.waveform-canvas-container:active {
+  cursor: grabbing;
+}
+
+.waveform-canvas {
+  display: block;
+  width: 100%;
+  height: 80px;
+  background-color: #222;
+  border-radius: 8px;
+}
+
+/* Fixed playhead line */
+.playhead-line {
+  position: absolute;
+  top: 0;
+  left: 50%; /* Center of the container */
+  width: 5px;
+  height: 100%;
+  background-color: #000000; /* Gold color */
+  z-index: 10;
+  pointer-events: none; /* Allow clicks to pass through */
+  transform: translateX(-50%);
+}
+
+/* Indicator triangle at top of playhead */
+.playhead-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #FFD700;
+}
+
+.waveform-loading {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  background-color: #222;
+  border-radius: 8px;
+}
+
+.waveform-timestamps {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: #fff;
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+.play-from {
+  font-weight: bold;
+  color: #FFD700;
+}
+
+.waveform-controls {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.choose-segment {
+  background-color: #FF464F;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.choose-segment:hover {
+  background-color: #FF5A63;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.choose-segment:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* BPM Analyzer Styles */
+.bpm-analyzer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--color-text-primary, #fff);
+  background-color: var(--color-accent, #FFD166);
+  padding: 8px 12px;
+  border-radius: 20px;
+  border: 2px solid var(--color-primary-dark, #70bfde);
+  box-shadow: var(--shadow-light, 0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Export Modal Styles */
