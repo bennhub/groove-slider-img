@@ -911,7 +911,51 @@ body {
 
 .thumbnail {
   position: relative;
-  margin-bottom: 24px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  touch-action: none;
+}
+
+.thumbnail.selected {
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+.thumbnail.drag-over {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 2px #007AFF;
+  position: relative;
+}
+
+.thumbnail.drag-over::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 122, 255, 0.1);
+  pointer-events: none;
+}
+
+.selection-dot {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #007AFF;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 3;
+}
+
+.thumbnail.selected:active {
+  transform: scale(1.05);
+  cursor: grabbing;
 }
 
 .thumbnail-content {

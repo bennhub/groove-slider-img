@@ -676,43 +676,55 @@ const ExportModal = ({
 //--------------------------------------------
 // Edit Panel Component
 const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
-  // State to track position input values
   const [positions, setPositions] = useState(
     stories.map((_, index) => index + 1)
   );
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Handle position change for an image
-  const handlePositionChange = (index, value) => {
-    // Handle empty or invalid input
-    if (value === "" || isNaN(value)) {
-      const newPositions = [...positions];
-      newPositions[index] = ""; // Allow empty state while typing
-      setPositions(newPositions);
-      return; // Don't reorder until we have a valid number
+  // Handle tap selection
+  const handleTapSelect = (index) => {
+    setSelectedIndex(selectedIndex === index ? null : index);
+  };
+
+  // Enhanced drag handlers
+  const handleDragStart = (e, index) => {
+    if (selectedIndex === index) {
+      setIsDragging(true);
+      e.currentTarget.style.cursor = 'grabbing';
     }
+  };
 
-    const newPosition = parseInt(value);
-    // Only reorder if we have a valid position
-    if (newPosition >= 1 && newPosition <= stories.length) {
-      const validPosition = Math.min(Math.max(1, newPosition), stories.length);
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (isDragging && selectedIndex !== null && selectedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
 
-      // Create new positions array
-      const newPositions = [...positions];
-      newPositions[index] = validPosition;
-      setPositions(newPositions);
-
-      // Reorder the stories based on new position
+  const handleDrop = (targetIndex) => {
+    if (selectedIndex !== null && selectedIndex !== targetIndex) {
+      // Perform the reorder
       const newStories = [...stories];
-      const movedItem = newStories.splice(index, 1)[0];
-      newStories.splice(validPosition - 1, 0, movedItem);
-
-      // Update positions to reflect new order
+      const [movedItem] = newStories.splice(selectedIndex, 1);
+      newStories.splice(targetIndex, 0, movedItem);
+      
+      // Update positions
       const updatedPositions = newStories.map((_, i) => i + 1);
       setPositions(updatedPositions);
-
-      // Call parent's reorder function
       onReorder(newStories);
+      
+      // Reset states
+      setSelectedIndex(null);
+      setDragOverIndex(null);
+      setIsDragging(false);
     }
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDragOverIndex(null);
   };
 
   return (
@@ -724,10 +736,30 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
         </button>
       </div>
 
-      {/* Thumbnails section */}
       <div className="thumbnails-container">
         {stories.map((story, index) => (
-          <div key={index} className="thumbnail">
+          <div 
+            key={index} 
+            className={`thumbnail ${selectedIndex === index ? 'selected' : ''} 
+                       ${dragOverIndex === index ? 'drag-over' : ''}`}
+            onClick={() => handleTapSelect(index)}
+            onMouseDown={(e) => handleDragStart(e, index)}
+            onTouchStart={(e) => handleDragStart(e, index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onMouseOver={(e) => isDragging && handleDragOver(e, index)}
+            onTouchMove={(e) => {
+              const touch = e.touches[0];
+              const target = document.elementFromPoint(touch.clientX, touch.clientY);
+              const thumbnailEl = target.closest('.thumbnail');
+              if (thumbnailEl) {
+                const idx = Array.from(thumbnailEl.parentNode.children).indexOf(thumbnailEl);
+                handleDragOver(e, idx);
+              }
+            }}
+            onMouseUp={() => handleDrop(index)}
+            onTouchEnd={() => dragOverIndex !== null && handleDrop(dragOverIndex)}
+            draggable={selectedIndex === index}
+          >
             <div className="thumbnail-content">
               <button
                 className="delete-button"
@@ -740,21 +772,10 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
               </button>
               <div className="image-thumbnail">
                 <img src={story.url} alt={`Slide ${index + 1}`} />
+                {selectedIndex === index && (
+                  <div className="selection-dot" />
+                )}
               </div>
-            </div>
-            {/* Moved reorder-control outside thumbnail-content */}
-            <div className="reorder-control">
-              <span>Reorder</span>
-              <input
-                type="number"
-                min="1"
-                max={stories.length}
-                value={positions[index]}
-                onChange={(e) =>
-                  handlePositionChange(index, parseInt(e.target.value))
-                }
-                className="position-input"
-              />
             </div>
           </div>
         ))}
