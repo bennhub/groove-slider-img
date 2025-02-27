@@ -361,17 +361,16 @@ const MusicPanel = ({
           {/* Add waveform visualizer here */}
           {musicUrl && (
     <WaveformVisualizer 
-      audioUrl={musicUrl}
-      onStartPointChange={(time) => {
-        onStartPointChange(time);
-        if (controlsRef.current) {
-          controlsRef.current.currentTime = time;
-        }
-      }}
-
-      initialStartPoint={musicStartPoint}
-
-    />
+    audioUrl={musicUrl}
+    audioRef={audioRef}
+    onStartPointChange={(time) => {
+      onStartPointChange(time);
+      if (controlsRef.current) {
+        controlsRef.current.currentTime = time;
+      }
+    }}
+    musicStartPoint={musicStartPoint}
+  />
   )}
 
           {/* Simple audio progress display - without start point marker */}
@@ -903,14 +902,14 @@ const BottomMenu = ({
 
       {showMusicPanel && (
         <MusicPanel
-          audioRef={audioRef}
-          onUpload={onMusicUpload}
-          onBPMChange={onBPMChange}
-          currentBPM={bpm}
-          onStartPointChange={onStartPointChange}
-          musicStartPoint={musicStartPoint}
-          musicUrl={musicUrl}
-        />
+        audioRef={audioRef}
+        onUpload={onMusicUpload}
+        onBPMChange={onBPMChange}
+        currentBPM={bpm}
+        onStartPointChange={onStartPointChange}
+        musicStartPoint={musicStartPoint}
+        musicUrl={musicUrl}
+      />
       )}
 
       {showEditPanel && (
@@ -1102,9 +1101,11 @@ const StorySlider = () => {
   // Music handlers
   const handleMusicUpload = (url) => {
     setMusicUrl(url);
+    setMusicStartPoint(0); // Reset start point to beginning
+    
     if (audioRef.current) {
       audioRef.current.src = url;
-      audioRef.current.currentTime = musicStartPoint;
+      audioRef.current.currentTime = 0; // Ensure audio starts from beginning
     }
   };
 
@@ -1150,7 +1151,8 @@ const StorySlider = () => {
       }
       startAutoRotation();
       if (audioRef.current && musicUrl) {
-        audioRef.current.currentTime = musicStartPoint; // Use the stored start point
+        // Start from the stored musicStartPoint
+        audioRef.current.currentTime = musicStartPoint;
         audioRef.current.play().catch((err) => console.log("Play error:", err));
       }
     }

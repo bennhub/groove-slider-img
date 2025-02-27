@@ -6,11 +6,15 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
   const [audioBuffer, setAudioBuffer] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
-  const [waveformOffset, setWaveformOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [duration, setDuration] = useState(0);
-  const [canvasWidth, setCanvasWidth] = useState(800); // Default width
-  
+  const [canvasWidth, setCanvasWidth] = useState(800); 
+  const [currentPlaybackTime, setCurrentPlaybackTime] = useState(musicStartPoint);
+  const [waveformOffset, setWaveformOffset] = useState(() => {
+    const width = canvasRef.current?.width || 800;
+    return -(musicStartPoint / duration) * width;
+  });
+
   // Load and decode audio data
   useEffect(() => {
     if (!audioUrl) return;
@@ -40,6 +44,21 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
         setIsLoading(false);
       });
   }, [audioUrl]);
+
+  useEffect(() => {
+  const audioElement = audioRef?.current;
+  if (!audioElement) return;
+
+  const updatePlaybackTime = () => {
+    setCurrentPlaybackTime(audioElement.currentTime);
+  };
+
+  audioElement.addEventListener('timeupdate', updatePlaybackTime);
+
+  return () => {
+    audioElement.removeEventListener('timeupdate', updatePlaybackTime);
+  };
+}, [audioRef]);
   
   // Update canvas width on mount
   useEffect(() => {
@@ -49,7 +68,8 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
   }, [canvasRef.current]);
   
   // Draw waveform
-  useEffect(() => {
+  // In the waveform drawing useEffect
+useEffect(() => {
     if (!audioBuffer || !canvasRef.current) return;
     
     const canvas = canvasRef.current;
@@ -68,8 +88,8 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
     const channelData = audioBuffer.getChannelData(0); // Use first channel
     
     // Zoom in: select a portion of the samples
-    const totalSamplesToShow = Math.floor(channelData.length * 0.01); // Show 20% of samples
-    const startSampleIndex = Math.floor(channelData.length * 0.4); // Start from 40% of audio file
+    const totalSamplesToShow = Math.floor(channelData.length * 0.01);
+    const startSampleIndex = Math.floor(channelData.length * 0.4);
     
     // Draw waveform bars
     const barWidth = 5;
@@ -79,17 +99,8 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
     
     ctx.fillStyle = '#FFFFFF';
     
-    // Playhead is now at the start of the canvas
-    const playheadX = 0;
-    
-    // Calculate start time safely
-    const visibleStart = Math.max(0, Math.min(
-      audioBuffer.duration, 
-      (-waveformOffset / width) * audioBuffer.duration
-    ));
-    
-    // Trigger start point change
-    onStartPointChange(visibleStart);
+    // Calculate waveform offset based on current time
+    const playbackOffset = (currentPlaybackTime / duration) * width;
     
     for (let i = 0; i < totalBars; i++) {
       // Adjust sample position to use the zoomed-in portion
@@ -113,7 +124,7 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
       
       // Calculate bar positions
       const barPosition = i * (barWidth + barGap);
-      const offsetPosition = barPosition + waveformOffset;
+      const offsetPosition = barPosition - playbackOffset;
       const x = offsetPosition;
       const y = (height / 2) - scaledPeak;
       const barHeight = scaledPeak * 2; // Symmetric around center
@@ -124,13 +135,9 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
     
     // Draw playhead (fixed position marker)
     ctx.fillStyle = '#FFD700'; // Gold color
-    ctx.fillRect(playheadX, 0, 20, height);
+    ctx.fillRect(0, 0, 20, height);
     
-    // Draw time text
-    ctx.font = '12px Arial';
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(formatTime(visibleStart), playheadX + 5, 15);
-  }, [audioBuffer, waveformOffset, canvasWidth]);
+  }, [audioBuffer, currentPlaybackTime, canvasWidth, duration]);
   
   // Mouse event handlers
   const handleMouseDown = (e) => {
@@ -178,11 +185,11 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
        document.querySelector('audio'));
     
     if (currentAudioRef) {
-      const startTime = Math.max(0, Math.min(
-        duration, 
-        (-waveformOffset / canvasWidth) * duration
-      ));
-      currentAudioRef.currentTime = startTime;
+      // Use the current time directly from the audio element
+      const startTime = currentAudioRef.currentTime;
+      
+      // Set the start point
+      onStartPointChange(startTime);
     } else {
       console.error('No audio element found to set start time');
     }
@@ -195,25 +202,28 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
       ) : (
         <>
           <div 
-            className="waveform-canvas-container" 
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            style={{ cursor: 'grab' }}
-          >
-            <canvas 
-              ref={canvasRef} 
-              width={800} 
-              height={80} 
-              className="waveform-canvas"
-            />
-          </div>
+  className="waveform-canvas-container" 
+  onMouseDown={handleMouseDown}
+  onMouseMove={handleMouseMove}
+  onMouseUp={handleMouseUp}
+  onMouseLeave={handleMouseUp}
+  style={{ 
+    cursor: 'default', // Changed from 'grab'
+    pointerEvents: 'none' // Prevents interaction
+  }}
+>
+  <canvas 
+    ref={canvasRef} 
+    width={800} 
+    height={80} 
+    className="waveform-canvas"
+  />
+</div>
           <div className="waveform-timestamps">
             <span className="start-time">{formatTime(0)}</span>
             <span className="play-from">
-              Play from: {formatTime(Math.max(0, (-waveformOffset / canvasWidth) * duration))}
-            </span>
+  Play from: {formatTime(currentPlaybackTime)}
+</span>
             <span className="end-time">{formatTime(duration)}</span>
           </div>
           <div className="waveform-controls">
@@ -221,7 +231,7 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
               className="choose-segment" 
               onClick={handleChooseSegment}
             >
-              Choose segment
+              Set Start Point
             </button>
           </div>
         </>
