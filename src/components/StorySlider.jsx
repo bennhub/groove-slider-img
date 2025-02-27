@@ -809,6 +809,7 @@ const BottomMenu = ({
   stories,
   setStories,
   handleDelete,
+  handleReorder,
 }) => {
   const [showDurationPanel, setShowDurationPanel] = useState(false);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
@@ -936,7 +937,10 @@ const BottomMenu = ({
         <EditPanel
           stories={stories}
           onClose={() => setShowEditPanel(false)}
-          onReorder={setStories}
+          onReorder={(newStories) => {
+            setStories(newStories);
+            handleReorder(newStories);  // This will trigger the auto-restart
+          }}
           onDelete={handleDelete}
         />
       )}
@@ -1144,8 +1148,14 @@ const StorySlider = () => {
   const startAutoRotation = () => {
     intervalRef.current = setInterval(() => {
       setCurrentIndex((prevIndex) => {
+        // If we're not looping and at the last slide
         if (!isLoopingEnabled && prevIndex >= stories.length - 1) {
           stopAutoRotation();
+          setIsPlaying(false);
+          // Stop music if it's playing
+          if (audioRef.current) {
+            audioRef.current.pause();
+          }
           return prevIndex;
         }
         return (prevIndex + 1) % stories.length;
@@ -1255,23 +1265,28 @@ const StorySlider = () => {
 
   // Handle Reorder
   const handleReorder = (newStories) => {
-    // Force stop any playback
-    stopAutoRotation();
-    setIsPlaying(false);
+    // Stop current playback if it's playing
+    if (isPlaying) {
+      stopAutoRotation();
+      setIsPlaying(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    }
 
     // Update state synchronously
     setCurrentIndex(0); // Reset to first position
     setStories(newStories);
   };
 
-  // Hande Delete
-  const handleDelete = (index) => {
-    const newStories = stories.filter((_, i) => i !== index);
-    setStories(newStories);
-    if (currentIndex >= index) {
-      setCurrentIndex(Math.max(0, currentIndex - 1));
-    }
-  };
+  // Handle Delete
+const handleDelete = (index) => {
+  const newStories = stories.filter((_, i) => i !== index);
+  setStories(newStories);
+  if (currentIndex >= index) {
+    setCurrentIndex(Math.max(0, currentIndex - 1));
+  }
+};
 
   // Export functionality
   const handleSaveSession = async (exportSettings) => {
@@ -1553,13 +1568,14 @@ const StorySlider = () => {
                 stories={stories}
                 setStories={setStories}
                 handleDelete={handleDelete}
+                handleReorder={handleReorder}
               />
 
               {showEditPanel && (
                 <EditPanel
                   stories={stories}
                   onClose={() => setShowEditPanel(!showEditPanel)}
-                  onReorder={setStories}
+                  onReorder={handleReorder}
                   onDelete={handleDelete}
                 />
               )}
