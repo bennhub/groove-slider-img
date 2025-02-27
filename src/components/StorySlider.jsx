@@ -192,9 +192,6 @@ const TapTempo = ({ onBPMChange, isAnalyzing }) => {
 //==============================================
 // MUSIC PANEL COMPONENT
 //==============================================
-//==============================================
-// MUSIC PANEL COMPONENT
-//==============================================
 const MusicPanel = ({
   onUpload,
   onBPMChange,
@@ -215,22 +212,21 @@ const MusicPanel = ({
   //BPM detection handler
   const detectBPM = async (audioUrl) => {
     try {
-      // Create an audio context
-      const audioContext = new (window.AudioContext ||
-        window.webkitAudioContext)();
-
-      // Fetch the audio data
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const response = await fetch(audioUrl);
       const arrayBuffer = await response.arrayBuffer();
-
-      // Decode the audio data
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-      // Analyze the audio buffer to get the BPM
-      const tempo = await analyze(audioBuffer);
-
-      // Return the detected BPM (rounded to nearest integer)
-      return Math.round(tempo);
+      
+      // Get the initial tempo
+      const detectedTempo = await analyze(audioBuffer);
+      
+      // If the detected tempo is above 140, it's likely double-time
+      // Adjust these thresholds based on your typical music library
+      if (detectedTempo > 140) {
+        return Math.round(detectedTempo / 2);
+      }
+      
+      return Math.round(detectedTempo);
     } catch (error) {
       console.error("BPM detection failed:", error);
       return 120; // Default fallback BPM
@@ -329,7 +325,10 @@ const MusicPanel = ({
             </div>
           )}
           <div className="manual-bpm">
-            <label>Manual BPM:</label>
+          <label>
+          <span>AUTO-BPM</span>
+          <span>DETECTION:</span>
+          </label>
             <input
               type="number"
               min="60"

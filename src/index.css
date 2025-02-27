@@ -1000,6 +1000,7 @@ body {
   font-size: 12px;
   border-radius: var(--border-radius-xs);
   z-index: 5;
+  display:none;
 }
 
 /* Duration Panel Styles */
@@ -1155,6 +1156,7 @@ body {
   flex-direction: column;
   align-items: center;
   margin-bottom: 1rem;
+  display: none;
 }
 
 .tap-button {
@@ -1171,32 +1173,45 @@ body {
   /* 3D effect */
   box-shadow: 0 6px 0 var(--color-primary-dark), 0 6px 10px rgba(0, 0, 0, 0.3); 
   transform: translateY(0);
+  display: none;
 }
 
 .tap-button:hover {
   background-color: var(--color-secondary-dark); /* Darker Orange */
   border-color: var(--color-primary-dark); /* Deep Brown */
+  display: none;
 }
 
 .tap-button:active {
   transform: translateY(6px);
   box-shadow: 0 2px 0 var(--color-primary-dark), 0 2px 6px rgba(0, 0, 0, 0.3); 
   transition: transform 0.05s ease-in-out, box-shadow 0.05s ease-in-out; /* Super fast response */
+  display: none;
 }
 
 .bpm-control {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   color: var(--color-text-primary);
   font-family: var(--font-family-primary);
+  min-height: 48px;
+  padding: var(--spacing-sm) 0;
 }
 
 .manual-bpm {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column; /* Stack children vertically */
+  align-items: flex-start; /* Align items to the left */
+  gap: 0.5rem; /* Space between label and input */
   margin-top: 0.5rem;
+}
+
+.manual-bpm label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
 }
 
 .bpm-input {
@@ -1207,6 +1222,13 @@ body {
   background: #e2e2e2;
   color: var(--color-text-primary);
   font-size: 20px;
+}
+.manual-bpm label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .music-player {
@@ -1514,10 +1536,13 @@ body {
 
 /* BPM Analyzer Styles */
 .bpm-analyzer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 8px 0;
   font-size: 14px;
   color: var(--color-text-primary, #fff);
   background-color: var(--color-accent, #FFD166);
@@ -1525,6 +1550,7 @@ body {
   border-radius: 20px;
   border: 2px solid var(--color-primary-dark, #70bfde);
   box-shadow: var(--shadow-light, 0 2px 4px rgba(0, 0, 0, 0.2));
+  z-index: 10;
 }
 
 .spinner {
