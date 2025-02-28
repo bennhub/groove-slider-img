@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Bungee+Shade&display=swap");
 /* Global Variables */
 :root {
   /* Colors */
@@ -17,26 +17,24 @@
   --color-border-primary: #e5771e; /* Burnt orange */
   --color-border-secondary: #75c8ae; /* Muted teal green */
 
-
-  
   /* Fonts */
   --font-family-primary: Arial, Helvetica, sans-serif;
-  
+
   /* Border Radius */
   --border-radius-sm: 4px;
   --border-radius-md: 8px;
   --border-radius-lg: 12px;
   --border-radius-xl: 24px;
   --border-radius-full: 50%;
-  
+
   /* Box Shadows */
   --shadow-default: 0 4px 12px rgba(0, 0, 0, 0.15);
   --shadow-light: 0 2px 5px rgba(0, 0, 0, 0.1);
-  
+
   /* Transitions */
   --transition-fast: 0.2s ease;
   --transition-standard: 0.3s ease;
-  
+
   /* Spacing */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -44,12 +42,30 @@
   --spacing-lg: 16px;
   --spacing-xl: 20px;
   --spacing-xxl: 24px;
-  
+
   /* Z-index layers */
   --z-index-base: 1;
   --z-index-menu: 50;
   --z-index-modal: 1000;
   --z-index-toast: 1002;
+
+  /* Screen breakpoints */
+  --mobile-width: 480px;
+  --tablet-width: 768px;
+  --desktop-width: 1024px;
+
+  /* Responsive spacing - adjust based on screen size */
+  --container-padding-mobile: 10px;
+  --container-padding-tablet: 20px;
+  --container-padding-desktop: 30px;
+
+  /* Responsive font sizes */
+  --font-size-small-mobile: 14px;
+  --font-size-base-mobile: 16px;
+  --font-size-large-mobile: 20px;
+  --font-size-small-tablet: 16px;
+  --font-size-base-tablet: 18px;
+  --font-size-large-tablet: 24px;
 }
 
 /* Reset and Base Styles */
@@ -59,15 +75,26 @@
   box-sizing: border-box;
 }
 
-html, body {
-  overscroll-behavior-y: none;  
-  overflow-y: auto;            
+html,
+body {
+  overscroll-behavior-y: none;
+  overflow-y: auto;
+  width: 100%;
+  height: 100%;
 }
 
 body {
   background-color: var(--color-background-secondary);
   font-family: var(--font-family-primary);
   color: var(--color-text-primary);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Responsive Image Base */
+img {
+  max-width: 100%;
+  height: auto;
 }
 
 /* Containers and Layout */
@@ -78,29 +105,49 @@ body {
   padding: var(--spacing-xl);
   background-color: var(--color-border-secondary);
   min-height: 100vh;
-  width: 100vw;
+  width: 100vw; /* Ensure it spans the full viewport width */
   position: fixed;
   top: 0;
   left: 0;
   padding-top: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .app-content {
-  width: 100%;
-  max-width: 390px;
-  height: 925px;
+  width: 100%; /* Ensure it spans the full width */
+  max-width: 100%; /* Remove max-width constraint */
+  height: auto;
+  min-height: 90vh;
   border: 3px solid var(--color-border-primary);
   padding: var(--spacing-sm);
   margin: 0 auto;
   margin-top: var(--spacing-sm);
-  padding-bottom: 80px;
+  padding-bottom: 80px; /* Ensure space for bottom menu */
   border-radius: var(--border-radius-md);
+  position: relative;
+  overflow: visible; /* Important to let bottom menu extend outside */
+}
+
+.app-content {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 90vh;
+  border: 3px solid var(--color-border-primary);
+  padding: var(--spacing-sm);
+  margin: 0 auto;
+  margin-top: var(--spacing-sm);
+  padding-bottom: 80px; /* Ensure space for bottom menu */
+  border-radius: var(--border-radius-md);
+  position: relative;
+  overflow: visible; /* Important to let bottom menu extend outside */
 }
 
 .story-container {
   width: 100%;
-  height: 80vh;
-  max-height: 700px;
+  height: 70vh;
+  max-height: none;
   margin: 0 auto;
   position: relative;
   overflow: hidden;
@@ -123,23 +170,21 @@ body {
 
 .slider-title {
   color: var(--color-background-primary);
-  font-size: 20px;
-  font-family: 'Bungee Shade', cursive;
-  text-align: left; /* Changed from center to left */
+  font-family: "Bungee Shade", cursive;
+  text-align: left;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 2px;
-  margin-top: -20px;
-  margin-bottom: var(--spacing-xl);
   background-color: rgba(255, 255, 255, 0.8);
-  padding: 5px 20px; 
+  padding: 5px 20px;
   position: relative;
-  border-radius: 12px; 
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); 
-  width: 70%; /* Added width */
-  max-width: 320px; /* Maximum width */
-  margin-left: -15px; /* Changed from auto to a specific value */
-  margin-right: auto; 
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: auto;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: auto;
+  display: inline-block;
 }
 
 .media-content {
@@ -154,13 +199,23 @@ body {
 }
 
 /* Landing Page */
+.landing-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #0d0d0d;
+  overflow: hidden;
+}
+
 .landing-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100%;
-  max-width: 390px; /* Match your app container width */
-  margin: 0 auto; /* Center horizontally */
+  max-width: 100%;
+  margin: 0 auto;
   background-color: #111;
   color: #fff;
   position: relative;
@@ -179,12 +234,11 @@ body {
 }
 
 .app-title {
-  font-family: 'Bungee Shade', cursive;
-  font-size: 30px;
+  font-family: "Bungee Shade", cursive;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 2px;
-  background: linear-gradient(45deg, #FF6B6B, #FFD166, #06D6A0);
+  background: linear-gradient(45deg, #ff6b6b, #ffd166, #06d6a0);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
@@ -204,7 +258,7 @@ body {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  background: radial-gradient(circle, #3F0071 0%, #240046 40%, #170B3B 100%);
+  background: radial-gradient(circle, #3f0071 0%, #240046 40%, #170b3b 100%);
   padding: 20px;
 }
 
@@ -227,15 +281,6 @@ body {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%2306D6A0" d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,165.3C960,171,1056,149,1152,160C1248,171,1344,213,1392,234.7L1440,256L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
 }
 
-.landing-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  width: 100%;
-  background-color: #0d0d0d;
-}
-
 .create-button {
   padding: 18px 36px;
   font-size: 18px;
@@ -243,14 +288,15 @@ body {
   text-transform: uppercase;
   letter-spacing: 1px;
   color: #240046;
-  background: linear-gradient(45deg, #FFD166, #FFE066);
+  background: linear-gradient(45deg, #ffd166, #ffe066);
   border: none;
   border-radius: 50px;
   cursor: pointer;
-  z-index: 20; /* Increased z-index to ensure clickability */
-  position: relative; /* Added for z-index to work properly */
+  z-index: 20;
+  position: relative;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
+  text-align: center;
 }
 
 .create-button:hover {
@@ -271,11 +317,11 @@ body {
   font-size: 20px;
   font-weight: bold;
   margin-bottom: 15px;
-  color: #FFD166;
+  color: #ffd166;
 }
 
 .style-card {
-  background-color: #170B3B;
+  background-color: #170b3b;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
@@ -283,7 +329,7 @@ body {
 
 .style-preview {
   height: 220px;
-  background-image: url('/src/assets/discoSplash.jpeg');
+  background-image: url("/src/assets/discoSplash.jpeg");
   background-size: cover;
   background-position: center;
   position: relative;
@@ -313,7 +359,7 @@ body {
   gap: 8px;
   width: 100%;
   padding: 14px;
-  background-color: #FFD166;
+  background-color: #ffd166;
   color: #240046;
   border: none;
   font-weight: bold;
@@ -322,17 +368,16 @@ body {
 }
 
 .use-style-button:hover {
-  background-color: #FFE066;
+  background-color: #ffe066;
 }
 
 .landing-nav {
   display: flex;
   justify-content: space-around;
   padding: 12px 0;
-  background-color: #170B3B;
+  background-color: #170b3b;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
-
 /* Media Containers */
 .media-wrapper {
   position: relative;
@@ -390,9 +435,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative; 
-  width: 100%;  
-  height: 100%; 
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 .audio-thumbnail {
@@ -442,20 +487,6 @@ body {
 }
 
 /* Empty State and File Upload */
-/* 
-.empty-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  min-height: 300px;
-  background-image: url('/src/assets/wallapaper.jpg');
-  background-size: cover;
-  background-position: center;
-  border-radius: var(--border-radius-lg);
-  border: 2px solid var(--color-border-primary);
-}*/
-
 .file-upload-label {
   display: flex;
   flex-direction: column;
@@ -508,7 +539,7 @@ body {
 }
 
 .upload-button:hover {
-  background: var( --color-accent);
+  background: var(--color-accent);
   border-color: #999;
 }
 
@@ -675,7 +706,6 @@ body {
   flex-direction: column;
   gap: var(--spacing-lg);
   width: 100%;
-  max-width: 390px;
   margin: 0 auto;
 }
 
@@ -770,26 +800,33 @@ body {
 }
 
 /* Bottom Menu Styles */
+/* Bottom Menu Styles */
 .bottom-menu {
   position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100vw; /* Use viewport width for full screen coverage */
+  max-width: 100vw; /* Ensure maximum width is full screen */
+  background: rgba(255, 255, 255, 0.95);
+  border-top: 2px solid var(--color-border-primary);
+  padding: var(--spacing-lg) 0; /* Remove horizontal padding */
+  z-index: var(--z-index-modal);
+  margin: 0 !important; /* Force no margins */
+  box-sizing: border-box; /* Ensure padding is included in the width */
   left: 50%;
   transform: translateX(-50%);
-  width: 100%;
-  max-width: 390px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 2px solid var(--color-border-primary);
-  padding: var(--spacing-lg);
-  z-index: var(--z-index-modal);
-  margin-bottom: var(--spacing-xl);
 }
 
+/* Add this for the inner content centering */
 .bottom-menu-buttons {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 100%;
-  color: var(--color-text-primary);
+  width: 100%; /* Span the full width */
+  max-width: 1200px; /* Optional: limit content width on very large screens */
+  margin: 0 auto; /* Center the content */
+  padding: 0 var(--spacing-md); /* Add padding for spacing */
 }
 
 /* Left side buttons container */
@@ -801,20 +838,26 @@ body {
 /* Right side buttons container */
 .bottom-menu-right-group {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 0; /* Remove fixed gap */
+  justify-content: space-between;
+  width: 40%; /* Allocate space for right group */
 }
 
 .bottom-menu-button {
+  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
   cursor: pointer;
   color: var(--color-text-primary);
   transition: all var(--transition-fast);
   background: none;
   border: none;
+  min-width: 0;
+  max-width: none;
+  display: flex;
 }
 
 /* Button hover state */
@@ -826,13 +869,13 @@ body {
 /* Button active state - when panel is open */
 .bottom-menu-button.active {
   background: rgba(255, 165, 0, 0.2);
-  color: #FF8C00;
+  color: #ff8c00;
   box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.5);
 }
 
 /* When active, change the icon color too */
 .bottom-menu-button.active .bottom-menu-icon {
-  color: #FF8C00;
+  color: #ff8c00;
 }
 
 .bottom-menu-icon {
@@ -848,14 +891,26 @@ body {
   white-space: nowrap;
 }
 
+/* Add inner containers for content centering */
+.music-panel-inner,
+.edit-panel-inner,
+.duration-panel-inner,
+.bottom-menu-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 var(--spacing-md);
+}
+
 /* Edit Panel Styles */
 .edit-panel {
   position: absolute;
   bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
   width: 100%;
-  max-width: 390px;
+  max-width: none;
+  transform: none;
   background: rgba(255, 255, 255, 0.9);
   padding: var(--spacing-lg);
   border: 2px solid var(--color-border-primary);
@@ -864,6 +919,8 @@ body {
   z-index: var(--z-index-menu);
   overflow-y: auto;
   max-height: 70vh;
+  border-left: 0;
+  border-right: 0;
 }
 
 .edit-panel-header {
@@ -925,12 +982,12 @@ body {
 
 .thumbnail.drag-over {
   transform: scale(1.05);
-  box-shadow: 0 0 0 2px #007AFF;
+  box-shadow: 0 0 0 2px #007aff;
   position: relative;
 }
 
 .thumbnail.drag-over::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -947,7 +1004,7 @@ body {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background-color: #007AFF;
+  background-color: #007aff;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   z-index: 3;
@@ -987,7 +1044,7 @@ body {
   top: var(--spacing-sm);
   right: var(--spacing-sm);
   z-index: 10;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   border-radius: var(--border-radius-full);
   border: none;
   color: white;
@@ -996,7 +1053,7 @@ body {
 }
 
 .delete-button:hover {
-  background: rgba(0,0,0,0.75);
+  background: rgba(0, 0, 0, 0.75);
 }
 
 .reorder-control {
@@ -1044,7 +1101,7 @@ body {
   font-size: 12px;
   border-radius: var(--border-radius-xs);
   z-index: 5;
-  display:none;
+  display: none;
 }
 
 /* Duration Panel Styles */
@@ -1054,7 +1111,6 @@ body {
   left: 0;
   right: 0;
   width: 100%;
-  max-width: 390px;
   background-color: rgba(255, 255, 255, 0.957);
   border: 1px solid var(--color-border-primary);
   padding: var(--spacing-xxl) var(--spacing-lg);
@@ -1101,7 +1157,7 @@ body {
   padding: var(--spacing-sm) var(--spacing-xs);
   border: 2px solid rgb(26, 25, 25);
   border-radius: var(--border-radius-xs);
-  background: var(--color-secondary); 
+  background: var(--color-secondary);
   color: rgb(255, 255, 255);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -1112,7 +1168,7 @@ body {
 }
 
 .bar-option.selected {
-  background:var(--color-accent);
+  background: var(--color-accent);
   color: rgb(18, 18, 18);
 }
 
@@ -1125,7 +1181,7 @@ body {
 }
 
 .bar-option::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1175,12 +1231,15 @@ body {
   left: 0;
   right: 0;
   width: 100%;
-  max-width: 390px;
+  max-width: none;
+  transform: none;
   background: rgb(230, 228, 225);
   padding: var(--spacing-lg);
   border: 2px solid var(--color-border-primary);
   border-top-left-radius: var(--border-radius-md);
   border-top-right-radius: var(--border-radius-md);
+  border-left: 0;
+  border-right: 0;
 }
 
 .music-controls {
@@ -1208,14 +1267,14 @@ body {
   font-size: 1.1rem;
   font-weight: bold;
   border-color: var(--color-primary-dark);
-  background-color: var(--color-secondary); 
-  color: rgb(255, 255, 255); 
+  background-color: var(--color-secondary);
+  color: rgb(255, 255, 255);
   border-radius: var(--border-radius-sm);
   cursor: pointer;
   transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; /* Faster transition */
-  
+
   /* 3D effect */
-  box-shadow: 0 6px 0 var(--color-primary-dark), 0 6px 10px rgba(0, 0, 0, 0.3); 
+  box-shadow: 0 6px 0 var(--color-primary-dark), 0 6px 10px rgba(0, 0, 0, 0.3);
   transform: translateY(0);
   display: none;
 }
@@ -1228,7 +1287,7 @@ body {
 
 .tap-button:active {
   transform: translateY(6px);
-  box-shadow: 0 2px 0 var(--color-primary-dark), 0 2px 6px rgba(0, 0, 0, 0.3); 
+  box-shadow: 0 2px 0 var(--color-primary-dark), 0 2px 6px rgba(0, 0, 0, 0.3);
   transition: transform 0.05s ease-in-out, box-shadow 0.05s ease-in-out; /* Super fast response */
   display: none;
 }
@@ -1352,8 +1411,6 @@ body {
   border: none;
 }
 
-
-
 /* Volume Control */
 .volume-control {
   display: flex;
@@ -1400,7 +1457,8 @@ body {
   text-align: center;
   outline: none;
   margin: var(--spacing-sm);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .loop-toggle {
@@ -1440,7 +1498,7 @@ body {
 }
 
 .loop-toggle input[type="checkbox"]::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 26px;
   height: 26px;
@@ -1449,7 +1507,7 @@ body {
   top: 2px;
   left: 2px;
   transition: transform var(--transition-standard);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .loop-toggle input[type="checkbox"]:checked {
@@ -1511,7 +1569,7 @@ body {
 
 /* Indicator triangle at top of playhead */
 .playhead-line::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 50%;
@@ -1520,7 +1578,7 @@ body {
   height: 0;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-top: 8px solid #FFD700;
+  border-top: 8px solid #ffd700;
 }
 
 .waveform-loading {
@@ -1545,7 +1603,7 @@ body {
 
 .play-from {
   font-weight: bold;
-  color: #FFD700;
+  color: #ffd700;
 }
 
 .waveform-controls {
@@ -1555,7 +1613,7 @@ body {
 }
 
 .choose-segment {
-  background-color: #FF464F;
+  background-color: #ff464f;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -1568,7 +1626,7 @@ body {
 }
 
 .choose-segment:hover {
-  background-color: #FF5A63;
+  background-color: #ff5a63;
   transform: translateY(-1px);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
 }
@@ -1589,7 +1647,7 @@ body {
   gap: 8px;
   font-size: 14px;
   color: var(--color-text-primary, #fff);
-  background-color: var(--color-accent, #FFD166);
+  background-color: var(--color-accent, #ffd166);
   padding: 8px 12px;
   border-radius: 20px;
   border: 2px solid var(--color-primary-dark, #70bfde);
@@ -1602,8 +1660,12 @@ body {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Export Modal Styles */
@@ -1613,7 +1675,7 @@ body {
   padding: var(--spacing-xxl);
   background: white;
   border-radius: var(--border-radius-md);
-  position: relative; 
+  position: relative;
   z-index: var(--z-index-toast);
 }
 
@@ -1625,7 +1687,7 @@ body {
 }
 
 .resolution-selector {
-  z-index: var(--z-index-toast);  
+  z-index: var(--z-index-toast);
   margin-bottom: var(--spacing-xxl);
   position: relative;
 }
@@ -1643,7 +1705,7 @@ body {
   border: 1px solid #ddd;
   background: var(--color-accent);
   font-size: 16px;
-  z-index: calc(var(--z-index-toast) + 1); 
+  z-index: calc(var(--z-index-toast) + 1);
   cursor: pointer;
 }
 
@@ -1671,10 +1733,9 @@ body {
 }
 
 .action-button.download {
-  background: #007AFF;
+  background: #007aff;
   color: white;
 }
-
 
 /* Progress Bar Styles */
 .progress-container {
@@ -1693,7 +1754,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: #007AFF;
+  background: #007aff;
   transition: width var(--transition-standard);
 }
 
@@ -1723,6 +1784,7 @@ body {
   color: white;
   text-align: center;
   animation: slideUp var(--transition-standard);
+  max-width: 90%;
 }
 
 .share-content {
@@ -1735,6 +1797,7 @@ body {
   display: flex;
   gap: var(--spacing-sm);
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .share-button {
@@ -1744,6 +1807,7 @@ body {
   cursor: pointer;
   font-weight: bold;
   transition: transform var(--transition-fast);
+  margin: 4px;
 }
 
 .share-button:hover {
@@ -1751,7 +1815,14 @@ body {
 }
 
 .share-button.instagram {
-  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  background: linear-gradient(
+    45deg,
+    #f09433,
+    #e6683c,
+    #dc2743,
+    #cc2366,
+    #bc1888
+  );
   color: white;
 }
 
@@ -1798,72 +1869,6 @@ body {
   background-color: #f4a127;
 }
 
-/* Responsive Styles */
-@media (max-width: 768px) {
-  .edit-panel {
-    height: 85vh;
-  }
-  
-  .thumbnails-container {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: var(--spacing-md);
-  }
-  
-  .progress-slider::-webkit-slider-thumb {
-    width: 24px;
-    height: 24px;
-  }
-  
-  .volume-slider::-webkit-slider-thumb {
-    width: 20px;
-    height: 20px;
-  }
-  
-  .bpm-input {
-    font-size: 20px;
-    padding: 8px;
-  }
-  
-  .set-start-point-button {
-    padding: 16px;
-  }
-}
-
-@media screen and (min-height: 800px) {
-  .app-content {
-    padding-bottom: 100px;
-  }
-  
-  .bottom-menu {
-    margin-bottom: 30px;
-  }
-}
-
-/* Scrollbar Styling */
-.thumbnails-container::-webkit-scrollbar {
-  width: 5px;
-}
-
-.thumbnails-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.thumbnails-container::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
-}
-
-/* Safe Area Support for Mobile */
-@supports (padding: max(0px)) {
-  .edit-panel {
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
-  }
-  
-  .bottom-menu {
-    padding-bottom: max(0px, env(safe-area-inset-bottom));
-  }
-}
-
 /* Export Progress Styles */
 .export-progress {
   background: white;
@@ -1897,3 +1902,578 @@ body {
   background: #000;
 }
 
+/* Scrollbar Styling */
+.thumbnails-container::-webkit-scrollbar {
+  width: 5px;
+}
+
+.thumbnails-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thumbnails-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+/* ================= RESPONSIVE MEDIA QUERIES ================= */
+/* Mobile Styles - Default, up to 480px */
+@media screen and (max-width: 480px) {
+  .app-content {
+    max-width: 390px;
+    height: 925px;
+  }
+
+  .story-container {
+    height: 80vh;
+    max-height: 700px;
+  }
+
+  .landing-container {
+    max-width: 390px;
+  }
+
+  .slider-title {
+    font-size: 20px;
+    width: 70%;
+    max-width: 320px;
+    margin-left: -15px;
+    margin-top: -20px;
+  }
+
+  .bottom-menu {
+    width: calc(100% - 2rem);
+    max-width: calc(100% - 2rem);
+  }
+
+  .music-panel-inner,
+  .edit-panel-inner,
+  .duration-panel-inner,
+  .bottom-menu-inner {
+    max-width: 100%;
+  }
+
+  .app-title {
+    font-size: 30px;
+  }
+}
+
+/* Tablet Styles - 481px to 1023px */
+/* Tablet Styles - 481px to 1023px */
+@media screen and (min-width: 481px) and (max-width: 1023px) {
+  .app-content {
+    max-width: 90%;
+    border-width: 3px;
+  }
+
+  .story-container {
+    height: 70vh;
+    margin-top: -25px;
+  }
+
+  .landing-container {
+    max-width: 90%;
+  }
+
+  .slider-title {
+    font-size: 24px;
+    width: auto;
+    max-width: none;
+    margin-left: 0;
+    margin-top: -15px;
+  }
+
+  .app-title {
+    font-size: 36px;
+  }
+
+  .bottom-menu {
+    width: calc(100% - 2rem);
+    max-width: calc(100% - 2rem);
+    padding: var(--spacing-lg) var(--spacing-xl);
+  }
+
+  @media screen and (min-width: 481px) and (max-width: 1023px) {
+    .music-panel-inner,
+    .edit-panel-inner,
+    .duration-panel-inner,
+    .bottom-menu-inner {
+      max-width: 90%;
+    }
+  }
+
+  /* Navigation buttons */
+  .nav-button {
+    width: 50px;
+    height: 50px;
+  }
+
+  /* Enhanced thumbnails for editing */
+  .thumbnails-container {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  /* Improved bottom menu buttons */
+  .bottom-menu-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .bottom-menu-text {
+    font-size: 16px;
+  }
+
+  /* Add inner containers for content centering */
+  .music-panel-inner,
+  .edit-panel-inner,
+  .duration-panel-inner,
+  .bottom-menu-inner {
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 var(--spacing-md);
+  }
+
+  /* Larger touch targets */
+  .delete-button {
+    padding: var(--spacing-sm);
+  }
+
+  .progress-slider::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Larger inputs for better touch control */
+  .bpm-input {
+    width: 100px;
+    font-size: 22px;
+  }
+
+  /* Improved modal sizing */
+  .modal-content {
+    max-width: 80%;
+  }
+
+  /* Adjust bar options layout */
+  .bar-options {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Enhanced toggle switches */
+  .loop-toggle input[type="checkbox"] {
+    width: 70px;
+    height: 35px;
+  }
+
+  .loop-toggle input[type="checkbox"]::before {
+    width: 31px;
+    height: 31px;
+  }
+
+  /* Enhance create button on landing */
+  .create-button {
+    padding: 20px 40px;
+    font-size: 20px;
+  }
+
+  /* Larger modal buttons */
+  .modal-button {
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: 16px;
+  }
+
+  /* Enhanced waveform visualization */
+  .waveform-canvas {
+    height: 100px;
+  }
+}
+
+/* Tablet Styles - continued */
+@media screen and (min-width: 481px) and (max-width: 1023px) {
+  /* Continued from previous section */
+
+  .volume-slider::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Larger inputs for better touch control */
+  .bpm-input {
+    width: 100px;
+    font-size: 22px;
+  }
+
+  /* Improved modal sizing */
+  .modal-content {
+    max-width: 80%;
+  }
+
+  /* Adjust bar options layout */
+  .bar-options {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Enhanced toggle switches */
+  .loop-toggle input[type="checkbox"] {
+    width: 70px;
+    height: 35px;
+  }
+
+  .loop-toggle input[type="checkbox"]::before {
+    width: 31px;
+    height: 31px;
+  }
+
+  /* Enhance create button on landing */
+  .create-button {
+    padding: 20px 40px;
+    font-size: 20px;
+  }
+
+  /* Larger modal buttons */
+  .modal-button {
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: 16px;
+  }
+
+  /* Enhanced waveform visualization */
+  .waveform-canvas {
+    height: 100px;
+  }
+}
+
+/* Desktop Styles - 1024px and above */
+@media screen and (min-width: 1024px) {
+  .music-panel-inner,
+  .edit-panel-inner,
+  .duration-panel-inner,
+  .bottom-menu-inner {
+    max-width: 80%;
+  }
+
+  .app-content {
+    max-width: 80%;
+    max-height: 90vh;
+    border-width: 4px;
+  }
+
+  .story-container {
+    height: 65vh;
+    margin-top: -20px;
+  }
+
+  .landing-container {
+    max-width: 80%;
+  }
+
+  .slider-title {
+    font-size: 28px;
+    margin-top: -10px;
+  }
+
+  .app-title {
+    font-size: 42px;
+  }
+
+  .bottom-menu {
+    width: calc(100% - 2rem);
+    max-width: calc(100% - 2rem);
+    padding: var(--spacing-xl) var(--spacing-xxl);
+  }
+
+  .edit-panel,
+  .music-panel,
+  .duration-panel {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    transform: none;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  /* Add inner container for content centering if needed */
+  .bottom-menu-inner,
+  .panel-inner {
+    max-width: 1200px; /* Maximum width for content on very large screens */
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* Even larger navigation elements */
+  .nav-button {
+    width: 60px;
+    height: 60px;
+  }
+
+  /* Expanded thumbnails grid */
+  .thumbnails-container {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+
+  /* Enhanced bottom menu buttons */
+  .bottom-menu-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .bottom-menu-text {
+    font-size: 18px;
+  }
+
+  /* Add inner containers for content centering */
+  .music-panel-inner,
+  .edit-panel-inner,
+  .duration-panel-inner,
+  .bottom-menu-inner {
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 var(--spacing-md);
+  }
+
+  /* Expanded modal content */
+  .modal-content {
+    max-width: 60%;
+  }
+
+  /* More spacing in panels */
+  .edit-panel-header h3 {
+    font-size: 22px;
+  }
+
+  .duration-controls h3 {
+    font-size: 20px;
+  }
+
+  /* Layout improvements for music panel */
+  .music-controls {
+    gap: var(--spacing-xl);
+  }
+
+  /* Improved bar options */
+  .bar-options {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-md);
+  }
+
+  .bar-option {
+    padding: var(--spacing-md) var(--spacing-sm);
+    font-size: 16px;
+  }
+
+  /* Enhanced create button */
+  .create-button {
+    padding: 24px 48px;
+    font-size: 22px;
+  }
+
+  /* Larger waveform */
+  .waveform-canvas {
+    height: 120px;
+  }
+}
+
+/* Landscape Orientation Adjustments */
+@media screen and (orientation: landscape) {
+  .app-content {
+    padding-bottom: 100px;
+  }
+
+  .story-container {
+    height: 65vh;
+  }
+
+  /* Adjust edit panel for landscape */
+  .edit-panel {
+    max-height: 60vh;
+  }
+
+  /* Adjust thumbnails in landscape */
+  .thumbnails-container {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  /* Special handling for small landscape screens (like phones in landscape) */
+  @media (max-height: 500px) {
+    .app-content {
+      height: auto;
+      min-height: 85vh;
+    }
+
+    .story-container {
+      height: 55vh;
+    }
+
+    .edit-panel {
+      max-height: 50vh;
+    }
+
+    .bottom-menu {
+      padding: var(--spacing-sm);
+    }
+
+    .bottom-menu-text {
+      display: none; /* Hide text labels on small landscape screens */
+    }
+
+    /* Add inner containers for content centering */
+    .music-panel-inner,
+    .edit-panel-inner,
+    .duration-panel-inner,
+    .bottom-menu-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 0 var(--spacing-md);
+    }
+  }
+}
+
+/* High DPI Screens (Retina, etc.) */
+@media screen and (-webkit-min-device-pixel-ratio: 2),
+  screen and (min-resolution: 192dpi) {
+  /* Enhance touch targets on high-DPI screens */
+  .delete-button,
+  .nav-button,
+  .modal-close,
+  .bottom-menu-button,
+  .edit-panel-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Large Desktop Screens */
+@media screen and (min-width: 1440px) {
+  .app-content {
+    max-width: 70%;
+  }
+
+  .landing-container {
+    max-width: 70%;
+  }
+
+  .bottom-menu,
+  .edit-panel,
+  .music-panel,
+  .duration-panel {
+    max-width: calc(100% - 2rem);
+  }
+
+  /* Larger font sizes for large screens */
+  .slider-title {
+    font-size: 32px;
+  }
+
+  .app-title {
+    font-size: 48px;
+  }
+}
+
+/* Extra Large Desktop Screens */
+@media screen and (min-width: 1920px) {
+  .app-content {
+    max-width: 60%;
+  }
+
+  .landing-container {
+    max-width: 60%;
+  }
+
+  .bottom-menu,
+  .edit-panel,
+  .music-panel,
+  .duration-panel {
+    max-width: calc(100% - 2rem);
+  }
+}
+
+/* Safe Area Support for Notched Devices */
+@supports (padding: max(0px)) {
+  .app-container {
+    padding-left: max(var(--spacing-xl), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--spacing-xl), env(safe-area-inset-right, 0px));
+    padding-bottom: max(var(--spacing-xl), env(safe-area-inset-bottom, 0px));
+  }
+
+  .edit-panel {
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .bottom-menu {
+    padding-bottom: max(var(--spacing-lg), env(safe-area-inset-bottom, 0px));
+    margin-bottom: max(var(--spacing-xl), env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Ensure important buttons remain accessible on notched devices */
+  .share-notification {
+    bottom: max(80px, calc(80px + env(safe-area-inset-bottom, 0px)));
+  }
+}
+
+/* Print Styles (in case user tries to print) */
+@media print {
+  .app-container {
+    position: relative;
+    overflow: visible;
+    height: auto;
+  }
+
+  .bottom-menu,
+  .edit-panel,
+  .music-panel,
+  .duration-panel,
+  .modal-overlay {
+    display: none !important;
+  }
+
+  .story-container {
+    page-break-inside: avoid;
+  }
+}
+
+/* Prefers Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Accessibility Improvements */
+@media screen and (prefers-contrast: high) {
+  .loop-toggle input[type="checkbox"] {
+    border: 2px solid black;
+  }
+
+  .bottom-menu-button.active {
+    box-shadow: 0 0 0 3px black;
+  }
+
+  .nav-button {
+    background: rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* Final touch: Ensure proper focus states for keyboard navigation */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--color-secondary);
+  outline-offset: 2px;
+}

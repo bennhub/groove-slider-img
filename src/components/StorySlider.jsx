@@ -31,6 +31,31 @@ import WaveformVisualizer from './WaveformVisualizer';
 import { analyze } from "web-audio-beat-detector";
 
 //==============================================
+// DEVICE DETECTION
+//==============================================
+const useDeviceType = () => {
+  const [isTablet, setIsTablet] = useState(false);
+  
+  useEffect(() => {
+    const checkDevice = () => {
+      // Check if device is likely a tablet (width >= 768px or tablet in user agent)
+      const tabletWidth = window.innerWidth >= 768;
+      const tabletUserAgent = /iPad|Android(?!.*Mobile)|Tablet/i.test(navigator.userAgent);
+      setIsTablet(tabletWidth || tabletUserAgent);
+    };
+    
+    // Check initially
+    checkDevice();
+    
+    // Check on resize
+    window.addEventListener('resize', checkDevice);
+    return () => window.removeEventListener('resize', checkDevice);
+  }, []);
+  
+  return isTablet;
+};
+
+//==============================================
 // UTILITIES / SERVICES
 //==============================================
 const ffmpeg = new FFmpeg({
@@ -730,7 +755,7 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
   return (
     <div className="edit-panel">
       <div className="edit-panel-header">
-        <h3>Edit Image Order</h3>
+        <h3>Re-order (select, drag, drop, tap)</h3>
         <button className="edit-panel-close" onClick={onClose}>
           <X size={20} />
         </button>
@@ -872,11 +897,11 @@ const BottomMenu = ({
   };
 
   return (
-    <div className="bottom-menu">
+    <div className="bottom-menu w-full flex flex-col items-stretch">
       {showDurationPanel && (
         <div className="duration-panel">
           <div className="duration-controls">
-            <h3>Slide Duration</h3>
+            <h3>Bar-Based Slide Transitions</h3>
             <div className="bar-options">
               {[
                 { value: 0.125, label: "⅛ Bar" },
@@ -1053,7 +1078,7 @@ const StorySlider = () => {
   const audioRef = useRef(null);
   const intervalRef = useRef(null);
 
-  //
+  //Slieshow a
   const handleStartSlideshow = () => {
     setShowLanding(false);
   };
