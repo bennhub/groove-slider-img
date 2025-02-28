@@ -120,7 +120,7 @@ img {
   max-width: 100%;
   height: auto;
   min-height: 90vh;
-  border: 3px solid var(--color-border-secondary);
+  border: 4px double var(--color-border-secondary); 
   padding: var(--spacing-sm);
   margin: 0 auto;
   margin-top: var(--spacing-sm);
@@ -155,20 +155,21 @@ img {
 }
 
 .slider-title {
-  color: var(--color-accent);
-  font-family: "Zen Dots",arial,cursive;
+  font-family: "Zen Dots",arial, cursive;
   text-align: left;
-  font-weight: normal;
-  text-transform: uppercase;
   letter-spacing: 2px;
   padding: 5px 2px;
   position: relative;
-  border-radius: 12px;
   width: auto;
   max-width: 100%;
   margin-left: 0;
-  margin-right: auto;
   display: inline-block;
+  font-weight: bold;
+  text-transform: uppercase;
+  background: linear-gradient(45deg, #ff6b6b, #ffd166, #06d6a0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
 }
 
 .media-content {
@@ -218,8 +219,9 @@ img {
 }
 
 .app-title {
-  font-family: "Bungee Shade", cursive;
+  font-family: "Zen Dots", arial, cursive;
   font-weight: bold;
+  text-align: left;
   text-transform: uppercase;
   letter-spacing: 2px;
   background: linear-gradient(45deg, #ff6b6b, #ffd166, #06d6a0);
