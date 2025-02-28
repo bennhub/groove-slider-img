@@ -25,7 +25,7 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
 
 // WavformVisualizer
-import WaveformVisualizer from './WaveformVisualizer';
+import WaveformVisualizer from "./WaveformVisualizer";
 
 // Beat detect
 import { analyze } from "web-audio-beat-detector";
@@ -35,23 +35,25 @@ import { analyze } from "web-audio-beat-detector";
 //==============================================
 const useDeviceType = () => {
   const [isTablet, setIsTablet] = useState(false);
-  
+
   useEffect(() => {
     const checkDevice = () => {
       // Check if device is likely a tablet (width >= 768px or tablet in user agent)
       const tabletWidth = window.innerWidth >= 768;
-      const tabletUserAgent = /iPad|Android(?!.*Mobile)|Tablet/i.test(navigator.userAgent);
+      const tabletUserAgent = /iPad|Android(?!.*Mobile)|Tablet/i.test(
+        navigator.userAgent
+      );
       setIsTablet(tabletWidth || tabletUserAgent);
     };
-    
+
     // Check initially
     checkDevice();
-    
+
     // Check on resize
-    window.addEventListener('resize', checkDevice);
-    return () => window.removeEventListener('resize', checkDevice);
+    window.addEventListener("resize", checkDevice);
+    return () => window.removeEventListener("resize", checkDevice);
   }, []);
-  
+
   return isTablet;
 };
 
@@ -194,7 +196,7 @@ const TapTempo = ({ onBPMChange, isAnalyzing }) => {
     }, 2000);
     return () => clearTimeout(timer);
   }, [taps]);
-  
+
   return (
     <div className="tap-tempo">
       <button onClick={handleTap} className="tap-button">
@@ -203,7 +205,7 @@ const TapTempo = ({ onBPMChange, isAnalyzing }) => {
           {currentBPM > 0 ? `${currentBPM} BPM` : ""}
         </span>
       </button>
-      
+
       {isAnalyzing && (
         <div className="bpm-analyzer">
           <div className="spinner"></div>
@@ -237,20 +239,21 @@ const MusicPanel = ({
   //BPM detection handler
   const detectBPM = async (audioUrl) => {
     try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const audioContext = new (window.AudioContext ||
+        window.webkitAudioContext)();
       const response = await fetch(audioUrl);
       const arrayBuffer = await response.arrayBuffer();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      
+
       // Get the initial tempo
       const detectedTempo = await analyze(audioBuffer);
-      
+
       // If the detected tempo is above 140, it's likely double-time
       // Adjust these thresholds based on your typical music library
       if (detectedTempo > 140) {
         return Math.round(detectedTempo / 2);
       }
-      
+
       return Math.round(detectedTempo);
     } catch (error) {
       console.error("BPM detection failed:", error);
@@ -320,7 +323,7 @@ const MusicPanel = ({
                   const url = URL.createObjectURL(file);
                   setFileName(file.name);
                   setIsAnalyzing(true); // Show analyzing indicator
-                  
+
                   // Start BPM detection
                   detectBPM(url)
                     .then((detectedBPM) => {
@@ -328,11 +331,11 @@ const MusicPanel = ({
                       onBPMChange(detectedBPM);
                       setIsAnalyzing(false); // Hide analyzing indicator
                     })
-                    .catch(err => {
+                    .catch((err) => {
                       console.error("BPM detection failed:", err);
                       setIsAnalyzing(false); // Hide analyzing indicator
                     });
-                  
+
                   onUpload(url);
                 }
               }}
@@ -350,10 +353,10 @@ const MusicPanel = ({
             </div>
           )}
           <div className="manual-bpm">
-          <label>
-          <span>AUTO-BPM</span>
-          <span>DETECTION:</span>
-          </label>
+            <label>
+              <span>AUTO-BPM</span>
+              <span>DETECTION:</span>
+            </label>
             <input
               type="number"
               min="60"
@@ -384,18 +387,18 @@ const MusicPanel = ({
 
           {/* Add waveform visualizer here */}
           {musicUrl && (
-    <WaveformVisualizer 
-    audioUrl={musicUrl}
-    audioRef={audioRef}
-    onStartPointChange={(time) => {
-      onStartPointChange(time);
-      if (controlsRef.current) {
-        controlsRef.current.currentTime = time;
-      }
-    }}
-    musicStartPoint={musicStartPoint}
-  />
-  )}
+            <WaveformVisualizer
+              audioUrl={musicUrl}
+              audioRef={audioRef}
+              onStartPointChange={(time) => {
+                onStartPointChange(time);
+                if (controlsRef.current) {
+                  controlsRef.current.currentTime = time;
+                }
+              }}
+              musicStartPoint={musicStartPoint}
+            />
+          )}
 
           {/* Simple audio progress display - without start point marker */}
           <div className="audio-progress">
@@ -717,7 +720,7 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
   const handleDragStart = (e, index) => {
     if (selectedIndex === index) {
       setIsDragging(true);
-      e.currentTarget.style.cursor = 'grabbing';
+      e.currentTarget.style.cursor = "grabbing";
     }
   };
 
@@ -734,12 +737,12 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
       const newStories = [...stories];
       const [movedItem] = newStories.splice(selectedIndex, 1);
       newStories.splice(targetIndex, 0, movedItem);
-      
+
       // Update positions
       const updatedPositions = newStories.map((_, i) => i + 1);
       setPositions(updatedPositions);
       onReorder(newStories);
-      
+
       // Reset states
       setSelectedIndex(null);
       setDragOverIndex(null);
@@ -755,7 +758,7 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
   return (
     <div className="edit-panel">
       <div className="edit-panel-header">
-        <h3>Re-order (select, drag, drop, tap)</h3>
+        <h3>Re-order (tap, drap, drop)</h3>
         <button className="edit-panel-close" onClick={onClose}>
           <X size={20} />
         </button>
@@ -763,10 +766,10 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
 
       <div className="thumbnails-container">
         {stories.map((story, index) => (
-          <div 
-            key={index} 
-            className={`thumbnail ${selectedIndex === index ? 'selected' : ''} 
-                       ${dragOverIndex === index ? 'drag-over' : ''}`}
+          <div
+            key={index}
+            className={`thumbnail ${selectedIndex === index ? "selected" : ""} 
+                       ${dragOverIndex === index ? "drag-over" : ""}`}
             onClick={() => handleTapSelect(index)}
             onMouseDown={(e) => handleDragStart(e, index)}
             onTouchStart={(e) => handleDragStart(e, index)}
@@ -774,15 +777,22 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
             onMouseOver={(e) => isDragging && handleDragOver(e, index)}
             onTouchMove={(e) => {
               const touch = e.touches[0];
-              const target = document.elementFromPoint(touch.clientX, touch.clientY);
-              const thumbnailEl = target.closest('.thumbnail');
+              const target = document.elementFromPoint(
+                touch.clientX,
+                touch.clientY
+              );
+              const thumbnailEl = target.closest(".thumbnail");
               if (thumbnailEl) {
-                const idx = Array.from(thumbnailEl.parentNode.children).indexOf(thumbnailEl);
+                const idx = Array.from(thumbnailEl.parentNode.children).indexOf(
+                  thumbnailEl
+                );
                 handleDragOver(e, idx);
               }
             }}
             onMouseUp={() => handleDrop(index)}
-            onTouchEnd={() => dragOverIndex !== null && handleDrop(dragOverIndex)}
+            onTouchEnd={() =>
+              dragOverIndex !== null && handleDrop(dragOverIndex)
+            }
             draggable={selectedIndex === index}
           >
             <div className="thumbnail-content">
@@ -797,9 +807,7 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
               </button>
               <div className="image-thumbnail">
                 <img src={story.url} alt={`Slide ${index + 1}`} />
-                {selectedIndex === index && (
-                  <div className="selection-dot" />
-                )}
+                {selectedIndex === index && <div className="selection-dot" />}
               </div>
             </div>
           </div>
@@ -948,14 +956,14 @@ const BottomMenu = ({
 
       {showMusicPanel && (
         <MusicPanel
-        audioRef={audioRef}
-        onUpload={onMusicUpload}
-        onBPMChange={onBPMChange}
-        currentBPM={bpm}
-        onStartPointChange={onStartPointChange}
-        musicStartPoint={musicStartPoint}
-        musicUrl={musicUrl}
-      />
+          audioRef={audioRef}
+          onUpload={onMusicUpload}
+          onBPMChange={onBPMChange}
+          currentBPM={bpm}
+          onStartPointChange={onStartPointChange}
+          musicStartPoint={musicStartPoint}
+          musicUrl={musicUrl}
+        />
       )}
 
       {showEditPanel && (
@@ -964,7 +972,7 @@ const BottomMenu = ({
           onClose={() => setShowEditPanel(false)}
           onReorder={(newStories) => {
             setStories(newStories);
-            handleReorder(newStories);  // This will trigger the auto-restart
+            handleReorder(newStories); // This will trigger the auto-restart
           }}
           onDelete={handleDelete}
         />
@@ -1049,6 +1057,9 @@ const StorySlider = () => {
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [currentFile, setCurrentFile] = useState(null);
+
+  // image resize
+  const [imageFitMode, setImageFitMode] = useState("cover");
 
   // Notifications State
   const [showShareNotification, setShowShareNotification] = useState(false);
@@ -1151,7 +1162,7 @@ const StorySlider = () => {
   const handleMusicUpload = (url) => {
     setMusicUrl(url);
     setMusicStartPoint(0); // Reset start point to beginning
-    
+
     if (audioRef.current) {
       audioRef.current.src = url;
       audioRef.current.currentTime = 0; // Ensure audio starts from beginning
@@ -1305,22 +1316,37 @@ const StorySlider = () => {
   };
 
   // Handle Delete
-const handleDelete = (index) => {
-  const newStories = stories.filter((_, i) => i !== index);
-  setStories(newStories);
-  if (currentIndex >= index) {
-    setCurrentIndex(Math.max(0, currentIndex - 1));
-  }
-};
+  const handleDelete = (index) => {
+    const newStories = stories.filter((_, i) => i !== index);
+    setStories(newStories);
+    if (currentIndex >= index) {
+      setCurrentIndex(Math.max(0, currentIndex - 1));
+    }
+  };
+
+  const getCoverFilterString = (width, height, fitMode) => {
+    if (fitMode !== 'cover') {
+      return `scale=${width}:${height}:force_original_aspect_ratio=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`;
+    } else {
+      // Simpler cover implementation
+      return `scale=iw*max(${width}/iw\\,${height}/ih):ih*max(${width}/iw\\,${height}/ih),crop=${width}:${height}`;
+    }
+  };
+  
 
   // Export functionality
   const handleSaveSession = async (exportSettings) => {
+    const finalExportSettings = {
+      ...exportSettings,
+      imageFitMode: imageFitMode, // Add this to your export settings
+    };
+
     // Destructure export settings with default values
     const {
       resolution = "1080x1920",
       isExportLoopEnabled = false,
       exportLoopDuration = 0,
-    } = exportSettings;
+    } = finalExportSettings;
 
     try {
       let fileHandle;
@@ -1390,6 +1416,7 @@ const handleDelete = (index) => {
           await ffmpeg.writeFile(inputName, await fetchFile(story.url));
           tempFiles.push(inputName);
 
+          // Later in your code:
           await ffmpeg.exec([
             "-loop",
             "1",
@@ -1402,7 +1429,7 @@ const handleDelete = (index) => {
             "-pix_fmt",
             "yuv420p",
             "-vf",
-            `scale=${width}:${height}:force_original_aspect_ratio=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`,
+            getCoverFilterString(width, height, imageFitMode),
             "-r",
             "30",
             "-preset",
@@ -1542,18 +1569,42 @@ const handleDelete = (index) => {
                 >
                   <div className="story-slide">
                     <div className="media-wrapper">
-                      <img
-                        src={stories[currentIndex].url}
-                        alt={`Slide ${currentIndex + 1}`}
-                        className="media-content"
+                      <div
+                        className="image-container"
                         style={{
-                          display: "block",
+                          position: "relative",
                           width: "100%",
                           height: "100%",
-                          objectFit: "contain",
                         }}
-                        loading="eager"
-                      />
+                      >
+                        <button
+                          className="image-fit-toggle"
+                          onClick={(e) => {
+                            e.preventDefault(); // Prevent any default behavior
+                            console.log("Image fit button clicked"); // Debug log
+                            setImageFitMode((current) => {
+                              const newMode =
+                                current === "cover" ? "contain" : "cover";
+                              console.log("New image fit mode:", newMode); // Log the new mode
+                              return newMode;
+                            });
+                          }}
+                        >
+                          {imageFitMode === "cover" ? "↔" : "⤢"}
+                        </button>
+                        <img
+                          src={stories[currentIndex].url}
+                          alt={`Slide ${currentIndex + 1}`}
+                          className="media-content"
+                          style={{
+                            objectFit: imageFitMode,
+                            width: "100%",
+                            height: "100%",
+                            display: "block",
+                          }}
+                          loading="eager"
+                        />
+                      </div>
                     </div>
                   </div>
                   <NavigationButtons
