@@ -24,6 +24,9 @@ import {
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
 
+// Export Modal
+import ExportModal from './ExportModal';
+
 // import Save Sessions
 import SaveSessionModal from "./SaveSessionModal";
 import SessionsList from "./SessionsList";
@@ -146,7 +149,7 @@ const GrooveGalleryLanding = ({ onCreateSlideshow, onLoadSession }) => {
           <div className="project-management">
             {/* Create new slideshow button */}
             <button className="create-button" onClick={onCreateSlideshow}>
-              CREATE SLIDE SHOW
+              CREATE SLIDESHOW
             </button>
 
             {/* Sessions toggle button */}
@@ -598,122 +601,7 @@ const ShareNotification = ({ isVisible, onClose }) => {
   );
 };
 
-//--------------------------------------------
-// Export Modal
-//--------------------------------------------
-const ExportModal = ({
-  isOpen,
-  progress,
-  message,
-  onClose,
-  onExport,
-  isExporting,
-}) => {
-  const [resolution, setResolution] = useState("1080x1920");
-  const [isExportLoopEnabled, setIsExportLoopEnabled] = useState(false);
-  const [exportLoopDuration, setExportLoopDuration] = useState(30);
 
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content export-modal">
-        <button className="modal-close" onClick={onClose}>
-          <X size={20} />
-        </button>
-        {!isExporting ? (
-          <>
-            <h3 className="modal-title">Export Settings</h3>
-
-            <div className="resolution-selector">
-              <label>Resolution:</label>
-              <select
-                value={resolution}
-                onChange={(e) => setResolution(e.target.value)}
-                className="resolution-select"
-              >
-                <option value="720x1280">720p</option>
-                <option value="1080x1920">1080p</option>
-                <option value="1440x2560">2K</option>
-              </select>
-            </div>
-
-            <div className="export-loop-settings">
-              <div className="loop-toggle">
-                <label>
-                  <span>Export as Loop</span>
-                  <input
-                    type="checkbox"
-                    checked={isExportLoopEnabled}
-                    onChange={() =>
-                      setIsExportLoopEnabled(!isExportLoopEnabled)
-                    }
-                  />
-                </label>
-              </div>
-
-              {isExportLoopEnabled && (
-                <div className="input-container">
-                  <label>Loop Duration (seconds):</label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="300"
-                    value={exportLoopDuration}
-                    onChange={(e) =>
-                      setExportLoopDuration(Number(e.target.value))
-                    }
-                    className="loop-duration-input"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="export-actions">
-              <button
-                className="action-button share"
-                onClick={() => {
-                  /* Share logic */
-                }}
-              >
-                <Share className="button-icon" />
-                Share
-              </button>
-
-              <button
-                className="action-button download"
-                onClick={() =>
-                  onExport({
-                    resolution,
-                    isExportLoopEnabled,
-                    exportLoopDuration,
-                  })
-                }
-              >
-                <Download className="button-icon" />
-                Export
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="loading-container">
-            <h3>Exporting Video</h3>
-            <p>{message}</p>
-            <div className="progress-container">
-              <div className="progress-bar">
-                <div
-                  className="progress-fill"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <span className="progress-text">{Math.round(progress)}%</span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
 //--------------------------------------------
 // Edit Panel Component
@@ -1465,7 +1353,7 @@ const StorySlider = () => {
 
     try {
       let fileHandle;
-      let fileName = "slideshow.mp4";
+      let fileName = "untitled.mp4";
 
       // Existing file handle logic remains the same
       if (!("showSaveFilePicker" in window)) {
@@ -1856,3 +1744,4 @@ const StorySlider = () => {
 };
 
 export default StorySlider;
+
