@@ -24,6 +24,12 @@ import {
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
 
+// import Save Sessions
+import SaveSessionModal from "./SaveSessionModal";
+import SessionsList from "./SessionsList";
+import { saveSession, loadSession } from "./indexedDBService";
+import "./sessionStyles.css";
+
 // WavformVisualizer
 import WaveformVisualizer from "./WaveformVisualizer";
 
@@ -103,7 +109,9 @@ const loadFFmpeg = async () => {
 //==============================================
 // LANDING PAGE COMPONENT
 //==============================================
-const GrooveGalleryLanding = ({ onCreateSlideshow }) => {
+const GrooveGalleryLanding = ({ onCreateSlideshow, onLoadSession }) => {
+  const [showSessions, setShowSessions] = useState(true);
+
   return (
     <div className="landing-wrapper">
       <div className="landing-container">
@@ -134,27 +142,36 @@ const GrooveGalleryLanding = ({ onCreateSlideshow }) => {
           <div className="wave-pattern top"></div>
           <div className="wave-pattern bottom"></div>
 
-          {/* Central action button */}
-          <button className="create-button" onClick={onCreateSlideshow}>
-            CREATE A SLIDESHOW
-          </button>
+          {/* Project management section */}
+          <div className="project-management">
+            {/* Create new slideshow button */}
+            <button className="create-button" onClick={onCreateSlideshow}>
+              CREATE SLIDE SHOW
+            </button>
+
+            {/* Sessions toggle button */}
+            <button
+              className="sessions-toggle-button"
+              onClick={() => setShowSessions(!showSessions)}
+            >
+              {showSessions ? "Hide Saved Projects" : "Show Saved Projects"}
+            </button>
+
+            {/* Sessions list */}
+            {showSessions && (
+              <div className="landing-sessions-container">
+                <SessionsList visible={true} onLoadSession={onLoadSession} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Featured Style Section */}
         <div className="featured-section">
-          <h2 className="section-title">Slide Shows that Groove to the Beat</h2>
-
-          <div className="style-card">
-            <div className="style-preview">
-              <div className="style-overlay">
-                <div className="style-name">Welcome to The Groove Gallery</div>
-              </div>
-            </div>
-            <button className="use-style-button">
-              <Music size={18} />
-              <span>Beat match music to your photo gallery</span>
-            </button>
-          </div>
+          <button className="use-style-button">
+            <Music size={18} />
+            <span>Beat match music to your photo gallery</span>
+          </button>
         </div>
       </div>
     </div>
@@ -169,7 +186,6 @@ const TapTempo = ({ onBPMChange, isAnalyzing }) => {
 
   const handleTap = () => {
     const now = Date.now();
-    const newTaps = [...taps, now].slice(-4); // Keep last 4 taps
     setTaps(newTaps);
 
     if (newTaps.length > 1) {
@@ -823,6 +839,7 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
 const BottomMenu = ({
   onFileUpload,
   onSaveSession,
+  onExportSession,
   onPlayPause,
   isPlaying,
   duration,
@@ -1033,6 +1050,11 @@ const BottomMenu = ({
 
           <button className="bottom-menu-button" onClick={onSaveSession}>
             <Save className="bottom-menu-icon" />
+            <span className="bottom-menu-text">Save</span>
+          </button>
+
+          <button className="bottom-menu-button" onClick={onExportSession}>
+            <Download className="bottom-menu-icon" />
             <span className="bottom-menu-text">Export</span>
           </button>
         </div>
@@ -1057,6 +1079,11 @@ const StorySlider = () => {
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [currentFile, setCurrentFile] = useState(null);
+
+  // Save Session State
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSavingSession, setIsSavingSession] = useState(false);
+  const [showSessionsList, setShowSessionsList] = useState(false);
 
   // image resize
   const [imageFitMode, setImageFitMode] = useState("cover");
@@ -1089,9 +1116,36 @@ const StorySlider = () => {
   const audioRef = useRef(null);
   const intervalRef = useRef(null);
 
-  //Slieshow a
+  // handleStartSlideshow function
   const handleStartSlideshow = () => {
-    setShowLanding(false);
+    if (stories.length > 0) {
+      if (
+        window.confirm("Start a new project? Any unsaved changes will be lost.")
+      ) {
+        // Clear all data and show main app
+        clearAllData();
+        setShowLanding(false);
+      }
+    } else {
+      // No existing content, just show main app
+      setShowLanding(false);
+    }
+  };
+
+  // Helper function to clear all data
+  const clearAllData = () => {
+    setStories([]);
+    setCurrentIndex(0);
+    setMusicUrl(null);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+    setIsPlaying(false);
+    setBpm(120);
+    setMusicStartPoint(0);
+    setDuration(2);
+    setIsLoopingEnabled(false);
   };
 
   // Image Preload
@@ -1240,28 +1294,39 @@ const StorySlider = () => {
 
   // Clear Session
   const handleClearSession = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to clear all content and start fresh?"
-      )
-    ) {
-      // Clear images
-      setStories([]);
-      // Reset index
-      setCurrentIndex(0);
-      // Clear music
-      setMusicUrl(null);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
+    if (stories.length > 0) {
+      if (
+        window.confirm(
+          "Do you want to save your current project before starting a new one?"
+        )
+      ) {
+        setShowSaveModal(true);
+      } else if (
+        window.confirm(
+          "Are you sure you want to clear all content and start fresh?"
+        )
+      ) {
+        // Clear images
+        setStories([]);
+        // Reset index
+        setCurrentIndex(0);
+        // Clear music
+        setMusicUrl(null);
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = "";
+        }
+        // Reset playback state
+        setIsPlaying(false);
+        // Reset other states
+        setBpm(120);
+        setMusicStartPoint(0);
+        setDuration(2);
+        setIsLoopingEnabled(false);
       }
-      // Reset playback state
-      setIsPlaying(false);
-      // Reset other states
-      setBpm(120);
-      setMusicStartPoint(0);
-      setDuration(2);
-      setIsLoopingEnabled(false);
+    } else {
+      // If there's no content, just go to projects page
+      setShowLanding(true);
     }
   };
 
@@ -1325,14 +1390,64 @@ const StorySlider = () => {
   };
 
   const getCoverFilterString = (width, height, fitMode) => {
-    if (fitMode !== 'cover') {
+    if (fitMode !== "cover") {
       return `scale=${width}:${height}:force_original_aspect_ratio=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`;
     } else {
       // Simpler cover implementation
       return `scale=iw*max(${width}/iw\\,${height}/ih):ih*max(${width}/iw\\,${height}/ih),crop=${width}:${height}`;
     }
   };
-  
+
+  //handle Save and load sessions from indexDB
+  // Add this function inside your StorySlider component,
+  // near your other handler functions like handleSaveSession:
+
+  const handleLoadSession = async (sessionId) => {
+    try {
+      // Stop any current playback
+      if (isPlaying) {
+        stopAutoRotation();
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+        setIsPlaying(false);
+      }
+
+      // Load session data from IndexedDB
+      const sessionData = await loadSession(sessionId);
+
+      // Apply session data to state
+      setStories(sessionData.stories);
+      setBpm(sessionData.bpm);
+      setDuration(sessionData.duration);
+      setIsLoopingEnabled(sessionData.isLoopingEnabled);
+      setCurrentIndex(sessionData.currentIndex);
+      setImageFitMode(sessionData.imageFitMode || "cover");
+
+      // Handle music
+      if (sessionData.musicUrl) {
+        setMusicUrl(sessionData.musicUrl);
+        setMusicStartPoint(sessionData.musicStartPoint);
+
+        // Set audio source
+        if (audioRef.current) {
+          audioRef.current.src = sessionData.musicUrl;
+          audioRef.current.currentTime = sessionData.musicStartPoint;
+        }
+      }
+
+      // Exit landing page if we're on it
+      if (showLanding) {
+        setShowLanding(false);
+      }
+
+      // Show success message
+      alert("Session loaded successfully!");
+    } catch (error) {
+      console.error("Error loading session:", error);
+      alert("Failed to load session: " + error.message);
+    }
+  };
 
   // Export functionality
   const handleSaveSession = async (exportSettings) => {
@@ -1542,19 +1657,70 @@ const StorySlider = () => {
     }
   };
 
+  // Handle Save Sessions
+  // Add this new function with a different name
+  const handleSaveSessionToDb = async (sessionName) => {
+    try {
+      // Show saving indicator
+      setShowProgress(true);
+      setProgressMessage("Saving session...");
+      setSaveProgress(10);
+
+      // Prepare session data
+      const sessionData = {
+        name: sessionName,
+        stories,
+        musicUrl,
+        bpm,
+        musicStartPoint,
+        imageFitMode,
+        duration,
+        isLoopingEnabled,
+        currentIndex,
+      };
+
+      // Progress indicator updates
+      setSaveProgress(40);
+
+      // Save session to IndexedDB
+      await saveSession(sessionData);
+
+      // Update progress
+      setSaveProgress(100);
+      setProgressMessage("Session saved successfully!");
+
+      // Hide progress after a brief moment
+      setTimeout(() => {
+        setShowProgress(false);
+        // Show success message
+        alert("Session saved successfully!");
+      }, 1000);
+    } catch (error) {
+      console.error("Error saving session to database:", error);
+      setShowProgress(false);
+      alert(`Failed to save session: ${error.message}`);
+    }
+  };
+
   // Render logic
   return (
     <>
       {showLanding ? (
-        <GrooveGalleryLanding onCreateSlideshow={handleStartSlideshow} />
+        <GrooveGalleryLanding
+          onCreateSlideshow={handleStartSlideshow}
+          onLoadSession={handleLoadSession}
+        />
       ) : (
         <div className="app-container">
           <div className="app-content">
             <div className="slider-container">
               <div className="title-bar">
                 <h1 className="slider-title">The Groove Gallery</h1>
-                <button onClick={handleClearSession} className="clear-button">
-                  Clear
+                <button
+                  onClick={() => setShowLanding(true)}
+                  className="projects-button"
+                >
+                  Projects
                 </button>
               </div>
               <audio ref={audioRef} src={musicUrl} loop={true} />
@@ -1624,7 +1790,8 @@ const StorySlider = () => {
               <BottomMenu
                 audioRef={audioRef}
                 onFileUpload={handleFileUpload}
-                onSaveSession={() => setShowExportModal(true)}
+                onSaveSession={() => setShowSaveModal(true)}
+                onExportSession={() => setShowExportModal(true)}
                 onPlayPause={handlePlayPause}
                 isPlaying={isPlaying}
                 duration={duration}
@@ -1663,6 +1830,12 @@ const StorySlider = () => {
                 onClose={() => setShowExportModal(false)}
                 onExport={handleSaveSession}
                 isExporting={isExporting}
+              />
+
+              <SaveSessionModal
+                isOpen={showSaveModal}
+                onClose={() => setShowSaveModal(false)}
+                onSave={handleSaveSessionToDb}
               />
 
               <ProgressModal
