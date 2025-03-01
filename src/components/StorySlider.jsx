@@ -991,7 +991,7 @@ const StorySlider = () => {
   const [musicStartPoint, setMusicStartPoint] = useState(0);
 
   // Looping State
-  const [isLoopingEnabled, setIsLoopingEnabled] = useState(false);
+  const [isLoopingEnabled, setIsLoopingEnabled] = useState(true);
 
   // Image Preload
   const [preloadedImages, setPreloadedImages] = useState({});
@@ -1646,18 +1646,35 @@ const StorySlider = () => {
                         >
                           {imageFitMode === "cover" ? "↔" : "⤢"}
                         </button>
-                        <img
-                          src={stories[currentIndex].url}
-                          alt={`Slide ${currentIndex + 1}`}
-                          className="media-content"
-                          style={{
-                            objectFit: imageFitMode,
-                            width: "100%",
-                            height: "100%",
-                            display: "block",
-                          }}
-                          loading="eager"
-                        />
+                        {stories[currentIndex] && stories[currentIndex].url ? (
+                          <img
+                            src={stories[currentIndex].url}
+                            alt={`Slide ${currentIndex + 1}`}
+                            className="media-content"
+                            style={{
+                              objectFit: imageFitMode,
+                              width: "100%",
+                              height: "100%",
+                              display: "block",
+                            }}
+                            loading="eager"
+                          />
+                        ) : (
+                          <div 
+                            className="empty-image-placeholder" 
+                            style={{ 
+                              backgroundColor: "#f5f5f5", 
+                              width: "100%",
+                              height: "100%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#333"
+                            }}
+                          >
+                            Select an image to display
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1674,7 +1691,7 @@ const StorySlider = () => {
                   />
                 </div>
               )}
-
+  
               <BottomMenu
                 audioRef={audioRef}
                 onFileUpload={handleFileUpload}
@@ -1701,7 +1718,7 @@ const StorySlider = () => {
                 handleDelete={handleDelete}
                 handleReorder={handleReorder}
               />
-
+  
               {showEditPanel && (
                 <EditPanel
                   stories={stories}
@@ -1710,7 +1727,7 @@ const StorySlider = () => {
                   onDelete={handleDelete}
                 />
               )}
-
+  
               <ExportModal
                 isOpen={showExportModal}
                 progress={saveProgress}
@@ -1719,13 +1736,13 @@ const StorySlider = () => {
                 onExport={handleSaveSession}
                 isExporting={isExporting}
               />
-
+  
               <SaveSessionModal
                 isOpen={showSaveModal}
                 onClose={() => setShowSaveModal(false)}
                 onSave={handleSaveSessionToDb}
               />
-
+  
               <ProgressModal
                 isOpen={showProgress}
                 progress={saveProgress}
