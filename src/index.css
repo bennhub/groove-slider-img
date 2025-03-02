@@ -733,8 +733,8 @@ display: flex;
 justify-content: center;
 align-items: center;
 width: 100%;
-max-width: 1200px; /* Optional: limit content width on very large screens */
-margin: 0 auto; /* Center the content */
+max-width: 1200px; 
+margin: 0 auto; 
 }
 /* Left side buttons container */
 .bottom-menu-left-group {
