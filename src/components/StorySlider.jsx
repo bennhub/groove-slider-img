@@ -1458,7 +1458,7 @@ onClose={() => setShowLanding(false)}
 onClick={() => setShowLanding(true)}
 className="projects-button"
 >
-Projects
+back
 </button>
 </div>
 <audio ref={audioRef} src={musicUrl} loop={true} />
