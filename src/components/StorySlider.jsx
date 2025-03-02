@@ -119,7 +119,7 @@ fontSize: "16px",
 i
 </span>
 </button>
-<h1 className="app-title">Groove Gallery</h1>
+<h1 className="app-title">Groove Slider</h1>
 {/* Always visible close button */}
 <button
 className="close-landing-button"
@@ -1453,7 +1453,7 @@ onClose={() => setShowLanding(false)}
 <div className="app-content">
 <div className="slider-container">
 <div className="title-bar">
-<h1 className="slider-title">Groove Gallery</h1>
+<h1 className="slider-title">Groove Slider</h1>
 <button
 onClick={() => setShowLanding(true)}
 className="projects-button"
