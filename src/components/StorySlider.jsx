@@ -783,7 +783,7 @@ const InfoModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
             );
-            case 'license':
+          case 'license':
   return (
     <div className="section-content">
       <header className="section-header">
