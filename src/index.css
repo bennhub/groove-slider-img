@@ -1014,7 +1014,7 @@ gap: var(--spacing-sm);
 display: flex;
 gap: 0; /* Remove fixed gap */
 justify-content: space-between;
-width: 50%; /* Allocate space for right group */
+width: 50%; 
 }
 .bottom-menu-button {
 flex: 1;
