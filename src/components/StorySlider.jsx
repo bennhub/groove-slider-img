@@ -450,17 +450,31 @@ className="volume-slider"
 // PROGRESS BAR COMPONENT
 //==============================================
 const ProgressBar = ({ currentIndex, totalSlides, onProgressClick }) => {
-return (
-<div className="progress-container">
-{[...Array(totalSlides)].map((_, index) => (
-<div
-key={index}
-className={`progress-bar ${index === currentIndex ? "active" : ""}`}
-onClick={() => onProgressClick(index)}
-/>
-))}
-</div>
-);
+  console.log('Rendering ProgressBar', {
+    currentIndex, 
+    totalSlides,
+    bars: [...Array(totalSlides)].map((_, index) => ({
+      index, 
+      isActive: index === currentIndex
+    }))
+  });
+
+  return (
+    <div className="progress-container">
+      {[...Array(totalSlides)].map((_, index) => (
+        <div
+          key={index}
+          className={`progress-bar ${index === currentIndex ? "active" : ""}`}
+          style={{
+            backgroundColor: index === currentIndex 
+              ? 'white' 
+              : 'rgba(255,255,255,0.3)'
+          }}
+          onClick={() => onProgressClick(index)}
+        />
+      ))}
+    </div>
+  );
 };
 //==============================================
 // NAVIGATION BUTTONS
@@ -1951,9 +1965,14 @@ isFirstSlide={currentIndex === 0}
 isLastSlide={currentIndex === stories.length - 1}
 />
 <ProgressBar
-currentIndex={currentIndex}
-totalSlides={stories.length}
-onProgressClick={setCurrentIndex}
+  currentIndex={currentIndex}
+  totalSlides={stories.length}
+  onProgressClick={(index) => {
+    console.log('Current Index:', currentIndex);
+    console.log('Clicked Index:', index);
+    console.log('Total Stories:', stories.length);
+    setCurrentIndex(index);
+  }}
 />
 </div>
 )}
