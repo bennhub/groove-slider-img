@@ -5,6 +5,8 @@ import React, { useState, useEffect, useRef } from "react";
 import {
 ChevronLeft,
 ChevronRight,
+ChevronDown, 
+ChevronUp,
 PlusCircle,
 X,
 Save,
@@ -1346,6 +1348,7 @@ const [touchEnd, setTouchEnd] = useState(null);
 // Refs
 const audioRef = useRef(null);
 const intervalRef = useRef(null);
+
 // handleStartSlideshow function
 const handleStartSlideshow = () => {
 if (stories.length > 0) {

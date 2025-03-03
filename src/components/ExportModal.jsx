@@ -1,11 +1,50 @@
 // src/components/ExportModal.jsx
 import React, { useState } from 'react';
-import { X, Share, Download } from 'lucide-react';
+import { X, Share, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { initiateExport } from '../services/exportService';
 
-//--------------------------------------------
-// Export Modal
-//--------------------------------------------
+// Custom Resolution Dropdown Component
+const CustomResolutionDropdown = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const resolutions = [
+    { value: "720x1280", label: "720p" },
+    { value: "1080x1920", label: "1080p" },
+    { value: "1440x2560", label: "2K" }
+  ];
+
+  const handleSelect = (newValue) => {
+    onChange(newValue);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="custom-resolution-dropdown">
+      <div 
+        className="dropdown-header"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {resolutions.find(res => res.value === value)?.label || value}
+        {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      </div>
+      {isOpen && (
+        <div className="dropdown-list">
+          {resolutions.map((resolution) => (
+            <div
+              key={resolution.value}
+              className="dropdown-item"
+              onClick={() => handleSelect(resolution.value)}
+            >
+              {resolution.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Export Modal Component
 const ExportModal = ({
     isOpen,
     progress,
@@ -13,17 +52,15 @@ const ExportModal = ({
     onClose,
     onExport,
     isExporting,
-    // Add any additional props you might need for export
-    storyData, // Assuming you pass the story data needed for export
+    storyData,
   }) => {
     const [resolution, setResolution] = useState("1080x1920");
     const [isExportLoopEnabled, setIsExportLoopEnabled] = useState(false);
     const [exportLoopDuration, setExportLoopDuration] = useState(30);
     const [exportError, setExportError] = useState(null);
   
-    // New export handler using Web Worker
+    // Export handler
     const handleExport = async () => {
-      // Prepare export configuration
       const exportConfig = {
         resolution,
         isExportLoopEnabled,
@@ -31,29 +68,21 @@ const ExportModal = ({
       };
   
       try {
-        // Clear any previous errors
         setExportError(null);
   
-        // Collect necessary data for export
         const exportData = {
-          // Include all necessary data for export
-          storyData, // Pass the full story data
+          storyData,
           resolution,
           isExportLoopEnabled,
           exportLoopDuration,
-          // Add any other required export parameters
         };
   
-        // Start the export process
         const exportedFile = await initiateExport(exportData, exportConfig);
         
-        // Call the original onExport with the exported file
-        // This allows the parent component to handle final steps like download
         onExport(exportedFile);
       } catch (error) {
         console.error('Export failed', error);
         
-        // Set error state to show user
         setExportError(error.message || 'Export failed. Please try again.');
       }
     };
@@ -72,15 +101,10 @@ const ExportModal = ({
   
               <div className="resolution-selector">
                 <label>Resolution:</label>
-                <select
+                <CustomResolutionDropdown
                   value={resolution}
-                  onChange={(e) => setResolution(e.target.value)}
-                  className="resolution-select"
-                >
-                  <option value="720x1280">720p</option>
-                  <option value="1080x1920">1080p</option>
-                  <option value="1440x2560">2K</option>
-                </select>
+                  onChange={setResolution}
+                />
               </div>
   
               <div className="export-loop-settings">
@@ -114,7 +138,6 @@ const ExportModal = ({
                 )}
               </div>
   
-              {/* Error display */}
               {exportError && (
                 <div className="export-error-message">
                   {exportError}
@@ -160,4 +183,5 @@ const ExportModal = ({
       </div>
     );
   };
-  export default ExportModal;
+
+export default ExportModal;

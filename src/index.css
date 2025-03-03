@@ -1926,6 +1926,42 @@ img {
   background: var(--color-border-primary);
   color: white;
 }
+/* export modal dropdown */
+.custom-resolution-dropdown {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 4px;
+}
+
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background:#0e0804f6;
+  border: 1px solid var(--color-border-secondary);
+  border-top: none;
+  z-index: 10;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(255,255,255,0.1);
+}
 /* Progress Bar Styles */
 .progress-container {
   margin-top: var(--spacing-xxl);
