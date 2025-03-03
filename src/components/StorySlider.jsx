@@ -20,7 +20,19 @@ Music,
 Volume,
 Info,
 RotateCw,
+Globe,
+MessageSquare,
+ShoppingBag,
+CircleSlash,
+Lock,
+FileText,
+GitCommit,
+Award 
 } from "lucide-react";
+
+//firebase
+import { db } from "../firebase";  
+import { doc, getDoc } from "firebase/firestore";
 //import { motion, useAnimation, AnimatePresence } from 'framer-motion';
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
@@ -35,6 +47,7 @@ import "./sessionStyles.css";
 import WaveformVisualizer from "./WaveformVisualizer";
 // Beat detect
 import { analyze } from "web-audio-beat-detector";
+
 //==============================================
 // DEVICE DETECTION
 //==============================================
@@ -97,36 +110,38 @@ throw error;
 // LANDING PAGE COMPONENT
 //==============================================
 const GrooveGalleryLanding = ({ onCreateSlideshow, onLoadSession, onClose }) => {
-const [showSessions, setShowSessions] = useState(true);
-return (
-<div className="landing-wrapper">
-<div className="landing-container">
-{/* Header with app title and info button only */}
-<div className="landing-header">
-<button className="info-button">
-<span
-style={{
-width: 24,
-height: 24,
-display: "flex",
-alignItems: "center",
-justifyContent: "center",
-borderRadius: "50%",
-border: "1px solid white",
-fontSize: "16px",
-}}
->
-i
-</span>
-</button>
-<h1 className="app-title">Groove Slider</h1>
-{/* Always visible close button */}
-<button
-className="close-landing-button"
-onClick={onClose}
->
-<X size={24} />
-</button>
+  const [showSessions, setShowSessions] = useState(true);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+
+  return (
+    <div className="landing-wrapper">
+      <div className="landing-container">
+        {/* Header with app title and info button only */}
+        <div className="landing-header">
+          <button className="info-button" onClick={() => setShowInfoModal(true)}>
+            <span
+              style={{
+                width: 24,
+                height: 24,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "50%",
+                border: "1px solid white",
+                fontSize: "16px",
+              }}
+            >
+              i
+            </span>
+          </button>
+          <h1 className="app-title">Groove Slider</h1>
+          {/* Always visible close button */}
+          <button
+            className="close-landing-button"
+            onClick={onClose}
+          >
+            <X size={24} />
+          </button>
 </div>
 {/* Main background with 70's style patterns */}
 <div className="retro-background">
@@ -160,10 +175,18 @@ onClick={() => setShowSessions(!showSessions)}
 <span>Beat match music to your photo gallery</span>
 </button>
 </div>
+
+{showInfoModal && (
+          <InfoModal 
+            isOpen={showInfoModal} 
+            onClose={() => setShowInfoModal(false)} 
+          />
+        )}
 </div>
 </div>
 );
 };
+
 //==============================================
 // TAP TEMPO COMPONENT
 //==============================================
@@ -516,6 +539,378 @@ transition: "width 0.3s ease-in-out",
 </div>
 );
 };
+
+//--------------------------------------------
+// Info Modal
+//--------------------------------------------
+const InfoModal = ({ isOpen, onClose }) => {
+  const [activeSection, setActiveSection] = useState(null);
+  const [licenseText, setLicenseText] = useState(""); 
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Firestore
+  useEffect(() => {
+    const fetchLicense = async () => {
+      try {
+        console.group('🔍 License Fetch Debugging');
+        console.log('Firestore DB:', db);
+        console.log('Modal Open:', isOpen);
+  
+        if (!db) {
+          console.error('❌ Firestore DB not initialized');
+          return;
+        }
+  
+        const docRef = doc(db, "content", "license");
+        console.log('📄 Document Reference:', docRef);
+  
+        try {
+          const docSnap = await getDoc(docRef);
+          console.log('📋 Document Exists:', docSnap.exists());
+  
+          if (docSnap.exists()) {
+            const licenseData = docSnap.data();
+            console.log('📝 License Data:', licenseData);
+  
+            if (licenseData && licenseData.text) {
+              console.log('✅ License Text Found');
+              setLicenseText(licenseData.text);
+            } else {
+              console.warn('❗ No text field in license document');
+              setLicenseText('No license text found.');
+            }
+          } else {
+            console.warn('❌ No such document in Firestore');
+            setLicenseText('License document does not exist.');
+          }
+        } catch (snapshotError) {
+          console.error('❌ Snapshot Error:', snapshotError);
+          setLicenseText(`Snapshot Error: ${snapshotError.message}`);
+        }
+      } catch (error) {
+        console.error('❌ Detailed Firebase Error:', error);
+        setLicenseText(`Error loading license: ${error.message}`);
+      } finally {
+        console.groupEnd();
+        setIsLoading(false);
+      }
+    };
+  
+    if (isOpen) {
+      fetchLicense();
+    }
+  }, [isOpen]);
+
+  // Function to handle clicking on a section
+  const handleSectionClick = (section) => {
+    setActiveSection(section);
+  };
+
+  // Function to go back to main menu
+  const handleBack = () => {
+    setActiveSection(null);
+  };
+
+  // Render section content based on active section
+  const renderSectionContent = () => {
+    switch (activeSection) {
+      case 'credits':
+        return (
+          <div className="section-content">
+            <header className="section-header">
+              <button className="back-button" onClick={handleBack}>
+                <ChevronLeft size={24} />
+              </button>
+              <h2>Credits</h2>
+            </header>
+            <div className="section-body">
+              <div className="credits-content">
+                <div className="developer-profile">
+                  <div className="developer-avatar">
+                    <Award size={64} />
+                  </div>
+                  <h3>Ben Hayes</h3>
+                  <p className="developer-title">Creator & Developer</p>
+                </div>
+                
+                <div className="company-info">
+                  <h4>Hayzer Apps</h4>
+                  <p>Groove Slider was designed, developed, and maintained by Ben Hayes as the sole developer.</p>
+                </div>
+                
+                <div className="developer-note">
+                  <p>From concept to implementation, every aspect of this app was crafted to provide an elegant way to create musical slideshows of your favorite moments.</p>
+                  <p>I hope you enjoy using Groove Slider as much as I enjoyed creating it.</p>
+                </div>
+                
+                <div className="contact-section">
+                  <h4>Connect</h4>
+                  <p>Have feedback or suggestions? I'd love to hear from you!</p>
+                  <p>Email: contact@hayzerapps.com</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'feedback':
+        return (
+          <div className="section-content">
+            <header className="section-header">
+              <button className="back-button" onClick={handleBack}>
+                <ChevronLeft size={24} />
+              </button>
+              <h2>Feedback</h2>
+            </header>
+            <div className="section-body">
+              <div className="feedback-form">
+                <p>We'd love to hear your thoughts on Groove Slider!</p>
+                <textarea 
+                  placeholder="Share your feedback here..."
+                  className="feedback-textarea"
+                  rows={6}
+                ></textarea>
+                <button className="submit-button">Submit Feedback</button>
+              </div>
+            </div>
+          </div>
+        );
+      // Add cases for other sections
+      case 'restore':
+        return (
+          <div className="section-content">
+            <header className="section-header">
+              <button className="back-button" onClick={handleBack}>
+                <ChevronLeft size={24} />
+              </button>
+              <h2>Restore Purchase</h2>
+            </header>
+            <div className="section-body">
+              <p>Tap the button below to restore your previous purchases.</p>
+              <button className="restore-button">Restore Purchases</button>
+            </div>
+          </div>
+        );
+        case 'unsubscribe':
+          return (
+            <div className="section-content">
+              <header className="section-header">
+                <button className="back-button" onClick={handleBack}>
+                  <ChevronLeft size={24} />
+                </button>
+                <h2>How to Unsubscribe</h2>
+              </header>
+              <div className="section-body">
+                <div className="unsubscribe-info">
+                  <p>For information on how to manage or cancel your subscription, please visit Google's official support page:</p>
+                  <button 
+                    className="external-link-button"
+                    onClick={() => window.open("https://support.google.com/googleplay/answer/7018481?hl=en&co=GENIE.Platform%3DAndroid", "_blank")}
+                  >
+                    Google Play Subscription Help
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+          case 'privacy':
+            return (
+              <div className="section-content">
+                <header className="section-header">
+                  <button className="back-button" onClick={handleBack}>
+                    <ChevronLeft size={24} />
+                  </button>
+                  <h2>Privacy Policy</h2>
+                </header>
+                <div className="section-body">
+                  <div className="privacy-content">
+                    <h3>Privacy Policy for Groove Slider</h3>
+                    <p>Last Updated: March 2, 2025</p>
+                    
+                    <h4>Introduction</h4>
+                    <p>Welcome to Groove Slider. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we handle your data when you use our application and tell you about your privacy rights.</p>
+                    
+                    <h4>What Data We Collect</h4>
+                    <p>Groove Slider requires access to the following on your device:</p>
+                    <ul>
+                      <li>Image files (photos, pictures) that you select to include in your slideshows</li>
+                      <li>Audio files (music, sounds) that you select to add to your slideshows</li>
+                    </ul>
+                    
+                    <h4>How We Use Your Data</h4>
+                    <p>We use your data for the following purposes:</p>
+                    <ul>
+                      <li>To create slideshows with your selected images</li>
+                      <li>To add your selected music to your slideshows</li>
+                      <li>To export these slideshows as MP4 video files to your device</li>
+                    </ul>
+                    
+                    <h4>Data Processing</h4>
+                    <p>All data processing happens locally on your device. Your images and music:</p>
+                    <ul>
+                      <li>Are not uploaded to our servers</li>
+                      <li>Are not shared with third parties</li>
+                      <li>Are only accessed when you explicitly grant permission</li>
+                      <li>Are only used for the purpose of creating and exporting your slideshows</li>
+                    </ul>
+                    
+                    <h4>Storage</h4>
+                    <p>The app stores:</p>
+                    <ul>
+                      <li>Temporary copies of your selected images and music while processing</li>
+                      <li>Your slideshow settings and preferences</li>
+                      <li>Completed MP4 video files that are saved to your device storage</li>
+                    </ul>
+                    
+                    <h4>Third-Party Services</h4>
+                    <p>Our app does not integrate with third-party analytics or advertising services.</p>
+                    
+                    <h4>Your Rights</h4>
+                    <p>You have the right to:</p>
+                    <ul>
+                      <li>Delete your saved slideshows and preferences by uninstalling the app</li>
+                      <li>Control what files you share with the app through your device permissions</li>
+                    </ul>
+                    
+                    <h4>Children's Privacy</h4>
+                    <p>Our service is not directed to anyone under the age of 13. We do not knowingly collect personal information from children.</p>
+                    
+                    <h4>Changes to This Privacy Policy</h4>
+                    <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date.</p>
+                    
+                    <h4>Contact Us</h4>
+                    <p>If you have any questions about this Privacy Policy, please contact us at: contact@grooveslider.app</p>
+                  </div>
+                </div>
+              </div>
+            );
+            case 'license':
+  return (
+    <div className="section-content">
+      <header className="section-header">
+        <button className="back-button" onClick={handleBack}>
+          <ChevronLeft size={24} />
+        </button>
+        <h2>License Agreement</h2>
+      </header>
+      <div className="section-body">
+        <div className="license-content">
+          {isLoading ? (
+            <p>Loading license...</p>
+          ) : (
+            <>
+              <h3>End User License Agreement</h3>
+              <p>Last Updated: March 2, 2025</p>
+              
+              <div className="license-text">
+                {licenseText || "No license text available."}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="info-modal">
+        {activeSection ? (
+          renderSectionContent()
+        ) : (
+          <>
+            <header className="info-header">
+              <h2>Settings</h2>
+              <button className="close-button" onClick={onClose}>
+                <X size={24} />
+              </button>
+            </header>
+
+            <div className="info-content">
+              {/* Pro banner */}
+              <div className="pro-banner">
+                <div className="pro-text">
+                  <h3>Groove Slider <span className="pro-badge">Pro</span></h3>
+                  <p>Unlock All Features</p>
+                </div>
+                <div className="pro-image">
+                  {/* You can replace this with an actual image or icon */}
+                  <div style={{ width: 80, height: 80, background: "rgba(255,255,255,0.2)", borderRadius: "8px" }}></div>
+                </div>
+              </div>
+
+              {/* Info items */}
+              <div className="info-item-group">
+                <div className="info-item" onClick={() => handleSectionClick('credits')}>
+                  <Globe className="info-icon" />
+                  <div className="info-text">
+                    <h4>Credits</h4>
+                    <p>About</p>
+                  </div>
+                  <ChevronRight />
+                </div>
+
+                <div className="info-item" onClick={() => handleSectionClick('feedback')}>
+                  <MessageSquare className="info-icon" />
+                  <div className="info-text">
+                    <h4>Feedback</h4>
+                  </div>
+                  <ChevronRight />
+                </div>
+
+                <div className="info-item" onClick={() => handleSectionClick('restore')}>
+                  <ShoppingBag className="info-icon" />
+                  <div className="info-text">
+                    <h4>Restore Purchase</h4>
+                  </div>
+                  <ChevronRight />
+                </div>
+              </div>
+
+              <div className="info-item-group">
+                <div className="info-item" onClick={() => handleSectionClick('unsubscribe')}>
+                  <CircleSlash className="info-icon" />
+                  <div className="info-text">
+                    <h4>How to unsubscribe</h4>
+                  </div>
+                  <ChevronRight />
+                </div>
+
+                <div className="info-item" onClick={() => handleSectionClick('privacy')}>
+                  <Lock className="info-icon" />
+                  <div className="info-text">
+                    <h4>Privacy Policy</h4>
+                  </div>
+                  <ChevronRight />
+                </div>
+
+                <div className="info-item" onClick={() => handleSectionClick('license')}>
+                  <FileText className="info-icon" />
+                  <div className="info-text">
+                    <h4>License</h4>
+                  </div>
+                  <ChevronRight />
+                </div>
+
+                <div className="info-item">
+                  <GitCommit className="info-icon" />
+                  <div className="info-text">
+                    <h4>Version</h4>
+                    <p>Version 0.9.0 (Beta)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 //--------------------------------------------
 // Caption Modal
 //--------------------------------------------
@@ -986,6 +1381,7 @@ if (stories.length > 0) {
 preloadAdjacentImages();
 }
 }, [currentIndex, stories]);
+
 // Load FFmpeg on mount
 useEffect(() => {
 loadFFmpeg().catch(console.error);
