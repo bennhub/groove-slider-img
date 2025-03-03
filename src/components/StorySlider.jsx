@@ -551,57 +551,71 @@ const InfoModal = ({ isOpen, onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Firestore
-  useEffect(() => {
-    const fetchLicense = async () => {
-      try {
-        console.group('🔍 License Fetch Debugging');
-        console.log('Firestore DB:', db);
-        console.log('Modal Open:', isOpen);
-  
-        if (!db) {
-          console.error('❌ Firestore DB not initialized');
-          return;
-        }
-  
-        const docRef = doc(db, "content", "license");
-        console.log('📄 Document Reference:', docRef);
-  
-        try {
-          const docSnap = await getDoc(docRef);
-          console.log('📋 Document Exists:', docSnap.exists());
-  
-          if (docSnap.exists()) {
-            const licenseData = docSnap.data();
-            console.log('📝 License Data:', licenseData);
-  
-            if (licenseData && licenseData.text) {
-              console.log('✅ License Text Found');
-              setLicenseText(licenseData.text);
-            } else {
-              console.warn('❗ No text field in license document');
-              setLicenseText('No license text found.');
-            }
-          } else {
-            console.warn('❌ No such document in Firestore');
-            setLicenseText('License document does not exist.');
-          }
-        } catch (snapshotError) {
-          console.error('❌ Snapshot Error:', snapshotError);
-          setLicenseText(`Snapshot Error: ${snapshotError.message}`);
-        }
-      } catch (error) {
-        console.error('❌ Detailed Firebase Error:', error);
-        setLicenseText(`Error loading license: ${error.message}`);
-      } finally {
-        console.groupEnd();
-        setIsLoading(false);
+useEffect(() => {
+  const fetchLicense = async () => {
+    try {
+      console.group('🔍 License Fetch Debugging');
+      console.log('Firestore DB:', db);
+      console.log('Modal Open:', isOpen);
+
+      if (!db) {
+        console.error('❌ Firestore DB not initialized');
+        return;
       }
-    };
-  
-    if (isOpen) {
-      fetchLicense();
+
+      const docRef = doc(db, "content", "license");
+      console.log('📄 Document Reference:', docRef);
+
+      try {
+        const docSnap = await getDoc(docRef);
+        console.log('📋 Document Exists:', docSnap.exists());
+
+        if (docSnap.exists()) {
+          const licenseData = docSnap.data();
+          console.log('📝 License Data:', licenseData);
+
+          if (licenseData && licenseData.text) {
+            console.log('✅ License Text Found');
+            setLicenseText(licenseData.text);
+          } else {
+            console.warn('❗ No text field in license document');
+            setLicenseText('No license text found.');
+          }
+        } else {
+          console.warn('❌ No such document in Firestore');
+          setLicenseText('License document does not exist.');
+        }
+      } catch (snapshotError) {
+        console.error('❌ Snapshot Error:', snapshotError);
+        
+        // Improved offline handling
+        if (snapshotError.code === 'unavailable') {
+          console.log('🌐 Offline mode: Attempting to use cached data');
+          const cachedDoc = await getDocFromCache(docRef);
+          
+          if (cachedDoc.exists()) {
+            const cachedData = cachedDoc.data();
+            setLicenseText(cachedData.text || 'Cached license text');
+          } else {
+            setLicenseText('License unavailable offline');
+          }
+        } else {
+          setLicenseText(`Error loading license: ${snapshotError.message}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Detailed Firebase Error:', error);
+      setLicenseText(`Error loading license: ${error.message}`);
+    } finally {
+      console.groupEnd();
+      setIsLoading(false);
     }
-  }, [isOpen]);
+  };
+
+  if (isOpen) {
+    fetchLicense();
+  }
+}, [isOpen]);
 
   // Function to handle clicking on a section
   const handleSectionClick = (section) => {

@@ -1,6 +1,6 @@
 // Import Firebase SDK
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore"; // Firestore (CMS)
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getStorage } from "firebase/storage"; // Storage (optional)
 
 // Your Firebase configuration
@@ -14,9 +14,14 @@ const firebaseConfig = {
   measurementId: "G-X0QJM954YF"
 };
 
-// Initialize Firebase
+// Initialize Firebase App
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app); // Firestore instance
+
+// Enable offline persistence with IndexedDB (new method)
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
+
 const storage = getStorage(app); // Storage instance (if needed)
 
 export { db, storage };
