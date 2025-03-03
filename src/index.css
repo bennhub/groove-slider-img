@@ -803,7 +803,7 @@ justify-content: center;
 z-index: var(--z-index-modal);
 }
 .modal-content {
-background: var(--color-background-primary);
+background: rgba(50, 33, 33, 0.933);
 padding: var(--spacing-xxl);
 border-radius: var(--border-radius-md);
 width: 90%;
@@ -1137,7 +1137,7 @@ right: 0;
 width: 100%;
 max-width: none;
 transform: none;
-background: rgba(50, 33, 33, 0.999);
+background: rgba(50, 33, 33,  0.900);
 padding: var(--spacing-lg);
 z-index: var(--z-index-menu);
 overflow-y: auto;
@@ -1332,7 +1332,7 @@ bottom: 100%;
 left: 0;
 right: 0;
 width: 100%;
-background-color: rgba(50, 33, 33, 0.999);
+background-color: rgba(50, 33, 33, 0.900);
 padding: var(--spacing-xxl) var(--spacing-lg);
 min-height: 120px;
 animation: slideUp var(--transition-standard);
@@ -1423,12 +1423,14 @@ color: var(--color-accent);
 font-size: 20px;
 font-family: var(--font-family-primary);
 }
-.duration-info .bpm-info {
-font-size: 18px;
-opacity: 0.7;
-font-family: var(--font-family-primary);
-color: rgb(255, 255, 255);
-}
+.duration-info .time-info {
+  font-size: 18px;
+  font-family: var(--font-family-primary);
+  color: rgb(255, 255, 255);
+  border: #da841bc9 solid 1px;
+  padding: 10px;
+  }
+
 .timeline-marker {
 color: var(--color-text-primary);
 font-size: 12px;
@@ -1443,7 +1445,7 @@ right: 0;
 width: 100%;
 max-width: none;
 transform: none;
-background: rgba(50, 33, 33, 0.999);
+background: rgba(50, 33, 33,  0.900);
 padding: var(--spacing-lg);
 border: 5px solid var(--color-border-primary);
 border-top-left-radius: var(--border-radius-md);
@@ -1837,8 +1839,7 @@ transform: rotate(360deg);
 min-width: 320px;
 max-width: 400px;
 padding: var(--spacing-xxl);
-background: rgba(50, 33, 33, 0.999);
-border: solid #e5771e 5px;
+background: rgba(50, 33, 33, 0.933);
 border-radius: var(--border-radius-md);
 position: relative;
 z-index: var(--z-index-toast);
@@ -1858,7 +1859,7 @@ position: relative;
 .resolution-selector label {
 display: block;
 margin-bottom: var(--spacing-sm);
-color: var(--color-background-primary);
+color: var(--color-accent);
 }
 .resolution-select {
 width: 100%;

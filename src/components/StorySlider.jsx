@@ -1167,8 +1167,8 @@ onDurationChange(newDuration);
 ))}
 </div>
 <div className="duration-info">
-<span>Current Duration: {duration.toFixed(2)}s</span>
-<span className="bpm-info">at {bpm} BPM</span>
+  <span>Slide Change Speed:</span>
+  <span className="time-info">{duration.toFixed(2)}s /{bpm} BPM</span>
 </div>
 {/*
 <div className="loop-toggle">
