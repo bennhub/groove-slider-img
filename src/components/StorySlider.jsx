@@ -172,7 +172,7 @@ onClick={() => setShowSessions(!showSessions)}
 <div className="featured-section">
 <button className="use-style-button">
 <Music size={18} />
-<span>Beat match music to your photo gallery</span>
+<span>Follow Us </span>
 </button>
 </div>
 
