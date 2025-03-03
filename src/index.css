@@ -118,7 +118,7 @@ margin: 0 auto;
 position: relative;
 overflow: hidden;
 background: var(--color-background-primary);
-margin-top: -35px;
+margin-top: -30px;
 isolation: isolate;
 }
 .story-slide {
@@ -986,7 +986,7 @@ left: 0;
 right: 0;
 width: 100vw;
 max-width: 100vw;
-background: #000;
+background: transparent;
 border-top: 1px solid var(--color-border-secondary);
 padding: var(--spacing-lg) 0;
 z-index: var(--z-index-modal);
@@ -1049,15 +1049,23 @@ z-index: 1;
 /* When active, change the icon color too */
 /* Base styling for icons */
 .bottom-menu-icon {
-width: 23px;
-height: 23px;
-margin-bottom: var(--spacing-xs);
-color: var(--color-accent);
-background: transparent;
+  width: 23px;
+  height: 23px;
+  color: var(--color-accent);
+  margin-bottom: 4px;
+  background: rgba(2, 8, 2, 0.351);
+  padding: 8px; /* This expands the background */
+  border-radius: 50%; /* Optional, to make the background circular */
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: content-box; /* Ensures padding doesn't affect icon size */
 }
 .bottom-menu-text {
 font-size: 14px;
-white-space: nowrap;
+background: rgba(2, 8, 2, 0.351);
+padding: 2px;
+border-radius: 2px; 
 }
 /* When active, change the icon color */
 .bottom-menu-button.active .bottom-menu-icon {
@@ -2079,15 +2087,13 @@ border-radius: 10px;
 position: absolute;
 top: 8px;
 left: 8px;
-font-size: 20px;
-font-weight: bold;
-border: solid #ffffff 0.3px;
-background-color: transparent;
-border-radius: 10px;
+font-size: 1px;
+background-color: rgba(0, 0, 0, 0.203);
 color: rgb(255, 255, 255);
 z-index: 10;
 cursor: pointer;
-padding: 5px 5px;
+border: solid #ebebeb61 2px;
+padding: 2px 2px;
 transition: background 0.9s ease;
 }
 .image-fit-toggle:hover {

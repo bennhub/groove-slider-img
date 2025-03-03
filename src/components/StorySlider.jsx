@@ -27,7 +27,9 @@ CircleSlash,
 Lock,
 FileText,
 GitCommit,
-Award 
+Award,
+Expand,
+Minimize
 } from "lucide-react";
 
 //firebase
@@ -1890,7 +1892,11 @@ return newMode;
 });
 }}
 >
-{imageFitMode === "cover" ? "↔" : "⤢"}
+{imageFitMode === "cover" ? (
+    <Minimize /> // Adjust the size and color as needed
+  ) : (
+    <Expand /> // Use the same icon for both modes, or change the icon if needed
+  )}
 </button>
 {stories[currentIndex] && stories[currentIndex].url ? (
 <img
