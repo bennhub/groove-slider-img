@@ -1,1 +1,0 @@
-(function(){"use strict";self.onmessage=async e=>{const{data:s,config:r}=e.data;try{const o=await t(s,r);self.postMessage({type:"complete",file:o})}catch(o){self.postMessage({type:"error",error:o.message})}};async function t(e,s){return console.log("Processing export",e,s),e}})();
