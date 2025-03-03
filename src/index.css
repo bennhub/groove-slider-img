@@ -1034,17 +1034,15 @@ display: flex;
 }
 /* Button hover state */
 .bottom-menu-button:hover {
-transform: scale(1.1);
 background: rgba(50, 205, 50, 0.1);
 }
 /* Button active state - when panel is open */
 .bottom-menu-button.active {
-color: #fffffe;
-transform: scale(1.12);
-filter: brightness(1.2);
-text-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
-transition: all 0.2s ease;
-z-index: 1;
+  color: #fffffe;
+  filter: brightness(1.2);
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+  transition: all 0.2s ease;
+  z-index: 1;
 }
 /* When active, change the icon color too */
 /* Base styling for icons */
@@ -1070,6 +1068,7 @@ border-radius: 2px;
 /* When active, change the icon color */
 .bottom-menu-button.active .bottom-menu-icon {
 color: #ff8c00;
+transition: all 0.2s ease;
 }
 /* Icon color pulse animation */
 @keyframes iconColorPulse {
@@ -1142,12 +1141,8 @@ padding: var(--spacing-lg);
 z-index: var(--z-index-menu);
 overflow-y: auto;
 max-height: 70vh;
-border: 5px solid var(--color-border-primary);
-border-top-left-radius: var(--border-radius-md);
-border-top-right-radius: var(--border-radius-md);
-border-left: 0;
-border-right: 0;
 }
+
 .edit-panel-header {
 display: flex;
 justify-content: space-between;
@@ -1156,6 +1151,7 @@ padding-bottom: var(--spacing-md);
 border-bottom: 1px solid var(--color-border-primary);
 margin-bottom: var(--spacing-lg);
 }
+
 .edit-panel-header h3 {
 font-size: 18px;
 font-weight: 600;
@@ -1167,7 +1163,7 @@ margin: 0;
 background: none;
 border: none;
 padding: var(--spacing-sm);
-color: var(--color-text-primary);
+color: var(--color-accent);
 cursor: pointer;
 display: flex;
 align-items: center;
