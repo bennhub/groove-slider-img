@@ -1633,6 +1633,166 @@ img {
   cursor: pointer;
   border: none;
 }
+
+/* Music player millisec buttons*/
+/* Enhanced styling for audio progress elements */
+
+/* Improved time display */
+.time-display {
+  display: flex;
+  justify-content: space-between;
+  font-family: monospace; /* For better alignment of digits */
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.time-display span {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.time-display span:hover {
+  background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+/* Smoother progress slider */
+.progress-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #e5e5e5;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.progress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4682B4;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.progress-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4682B4;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.progress-slider:hover::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  background: #36648B;
+}
+
+.progress-slider:hover::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #36648B;
+}
+
+/* Fine tuning controls */
+.fine-tune-controls {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.fine-tune-button {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.fine-tune-button:hover {
+  background: #e0e0e0;
+}
+
+.fine-tune-button:active {
+  background: #d0d0d0;
+  transform: translateY(1px);
+}
+
+/* Group fine-tune buttons by functionality */
+.fine-tune-controls .btn-group-negative {
+  display: flex;
+  gap: 2px;
+}
+
+.fine-tune-controls .btn-group-positive {
+  display: flex;
+  gap: 2px;
+}
+
+/* Debug tools */
+.debug-tools {
+  margin-top: 10px;
+  padding: 6px;
+  border-top: 1px dashed #e0e0e0;
+  display: flex;
+  justify-content: center;
+}
+
+.debug-button {
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  color: #666;
+}
+
+.debug-button:hover {
+  background: #f0f0f0;
+}
+
+/* Current time indicator */
+.current-time-indicator {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  margin-top: 6px;
+  font-family: monospace;
+  color: #333;
+}
+
+/* Direct time input button */
+.direct-time-input {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #4682B4;
+  font-size: 12px;
+  padding: 0;
+  margin-top: 4px;
+  text-decoration: underline;
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.direct-time-input:hover {
+  color: #36648B;
+}
+
+
 /* Volume Control */
 .volume-control {
   display: flex;
@@ -1786,7 +1946,7 @@ img {
   height: 0;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-top: 8px solid #ffd700;
+  border-top: 8px solid #ff0000;
 }
 .waveform-loading {
   height: 80px;
