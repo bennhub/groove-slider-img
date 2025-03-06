@@ -728,9 +728,10 @@ const MusicPanel = ({
             />
           </div>
           
-          <button className="direct-time-input" onClick={handleDirectTimeInput}>
-            Enter Exact Time
-          </button>
+          <label className="direct-time-input" >
+          <span>Start Point Fine-Tuning</span>
+          </label>
+         
           
           {/* Fine-tuning controls for millisecond adjustments */}
           <div className="fine-tune-controls">
