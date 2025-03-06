@@ -1,9 +1,9 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-// IndexedDB helper functions
+// Enhanced IndexedDB helper functions
 const initIndexedDB = () => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('AudioPositionsDB', 1);
+    const request = indexedDB.open('AudioVisualizerDB', 2);
     
     request.onerror = (event) => reject('IndexedDB error: ' + event.target.errorCode);
     
@@ -12,22 +12,26 @@ const initIndexedDB = () => {
       if (!db.objectStoreNames.contains('audioPositions')) {
         db.createObjectStore('audioPositions', { keyPath: 'audioUrl' });
       }
+      if (!db.objectStoreNames.contains('visualizerStates')) {
+        db.createObjectStore('visualizerStates', { keyPath: 'audioUrl' });
+      }
     };
     
     request.onsuccess = (event) => resolve(event.target.result);
   });
 };
 
-const storeAudioPositions = async (audioUrl, data) => {
+// Store visualizer state in IndexedDB
+const storeVisualizerState = async (audioUrl, state) => {
   try {
     const db = await initIndexedDB();
-    const transaction = db.transaction(['audioPositions'], 'readwrite');
-    const store = transaction.objectStore('audioPositions');
+    const transaction = db.transaction(['visualizerStates'], 'readwrite');
+    const store = transaction.objectStore('visualizerStates');
     
     return new Promise((resolve, reject) => {
       const request = store.put({
         audioUrl,
-        ...data,
+        ...state,
         timestamp: Date.now()
       });
       
@@ -35,16 +39,17 @@ const storeAudioPositions = async (audioUrl, data) => {
       request.onerror = () => reject(false);
     });
   } catch (error) {
-    console.error('Error storing positions data:', error);
+    console.error('Error storing visualizer state:', error);
     return false;
   }
 };
 
-const getAudioPositions = async (audioUrl) => {
+// Retrieve visualizer state from IndexedDB
+const getVisualizerState = async (audioUrl) => {
   try {
     const db = await initIndexedDB();
-    const transaction = db.transaction(['audioPositions'], 'readonly');
-    const store = transaction.objectStore('audioPositions');
+    const transaction = db.transaction(['visualizerStates'], 'readonly');
+    const store = transaction.objectStore('visualizerStates');
     
     return new Promise((resolve, reject) => {
       const request = store.get(audioUrl);
@@ -56,7 +61,7 @@ const getAudioPositions = async (audioUrl) => {
       request.onerror = () => reject(null);
     });
   } catch (error) {
-    console.error('Error retrieving positions data:', error);
+    console.error('Error retrieving visualizer state:', error);
     return null;
   }
 };
@@ -74,12 +79,11 @@ const WaveformVisualizer = ({
   const [duration, setDuration] = useState(0);
   const [canvasWidth, setCanvasWidth] = useState(800); 
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
-  const [zoomLevel, setZoomLevel] = useState(1); // 1 = full waveform visible
-  const [waveformOffset, setWaveformOffset] = useState(0); // Horizontal scroll position
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [waveformOffset, setWaveformOffset] = useState(0);
   const [followPlayhead, setFollowPlayhead] = useState(false);
 
-
-  // Add refs to track loaded audioUrl and animation frame
+  // Refs for tracking
   const loadedAudioUrlRef = useRef(null);
   const animationFrameRef = useRef(null);
   const isPlayingRef = useRef(false);
@@ -93,8 +97,8 @@ const WaveformVisualizer = ({
     
     const loadAudioAndPositions = async () => {
       try {
-        // First check if we have cached positions
-        const cachedData = await getAudioPositions(audioUrl);
+        // First check if we have cached visualizer state
+        const cachedState = await getVisualizerState(audioUrl);
         
         // Initialize audio context and decode the audio file
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -105,13 +109,24 @@ const WaveformVisualizer = ({
         setAudioBuffer(buffer);
         setDuration(buffer.duration);
         
-        // If we have cached positions, use them
-        if (cachedData) {
-          console.log('Using cached position data');
+        // Restore cached state if available
+        if (cachedState) {
+          // Restore zoom level and waveform offset
+          if (cachedState.zoomLevel) {
+            setZoomLevel(cachedState.zoomLevel);
+          }
+          if (cachedState.waveformOffset !== undefined) {
+            setWaveformOffset(cachedState.waveformOffset);
+          }
+          if (cachedState.followPlayhead !== undefined) {
+            setFollowPlayhead(cachedState.followPlayhead);
+          }
           
-          // Only update if they're different to prevent loops
-          if (onStartPointChange && Math.abs(cachedData.startPoint - musicStartPoint) > 0.001) {
-            onStartPointChange(cachedData.startPoint);
+          // Restore start point if different
+          if (onStartPointChange && 
+              cachedState.startPoint !== undefined && 
+              Math.abs(cachedState.startPoint - musicStartPoint) > 0.001) {
+            onStartPointChange(cachedState.startPoint);
           }
         }
         
@@ -125,21 +140,29 @@ const WaveformVisualizer = ({
     loadAudioAndPositions();
   }, [audioUrl, onStartPointChange, musicStartPoint]);
   
-  // Update canvas width on mount
+  // Save visualizer state when key properties change
   useEffect(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      setCanvasWidth(canvas.width);
-    }
-  }, []);
+    if (!audioUrl || !audioBuffer) return;
+    
+    // Debounce saving to avoid excessive writes
+    const saveTimer = setTimeout(() => {
+      storeVisualizerState(audioUrl, {
+        zoomLevel,
+        waveformOffset,
+        followPlayhead,
+        startPoint: musicStartPoint
+      }).catch(err => console.error("Error saving to IndexedDB:", err));
+    }, 1000);
+    
+    return () => clearTimeout(saveTimer);
+  }, [zoomLevel, waveformOffset, followPlayhead, musicStartPoint, audioUrl, audioBuffer]);
   
-  // Enhanced time update handler with millisecond precision and improved sync
+  // Enhanced time update handler with improved follow playhead logic
   useEffect(() => {
     const audioElement = audioRef?.current;
     if (!audioElement) return;
   
     const updatePlaybackTime = () => {
-      // Get current time directly from the audio element
       const currentTime = audioElement.currentTime;
       
       // Update state with precise timing
@@ -148,26 +171,33 @@ const WaveformVisualizer = ({
       // Update isPlaying ref based on audio element state
       isPlayingRef.current = !audioElement.paused;
       
-      // Auto-scroll when follow mode is enabled and playing
+      // Improved follow playhead logic
       if (followPlayhead && isPlayingRef.current) {
         const visibleDuration = duration / zoomLevel;
-        
-        // Check if playhead is near the edge of the visible window
         const startTime = waveformOffset;
         const endTime = startTime + visibleDuration;
         const visibilityThreshold = visibleDuration * 0.2; // 20% from edge
         
-        // If playhead is approaching edge of view, scroll to keep it centered
-        if (currentTime > endTime - visibilityThreshold || currentTime < startTime + visibilityThreshold) {
-          // Calculate new offset with playhead in center
-          const newOffset = Math.max(0, Math.min(duration - visibleDuration, 
-                                             currentTime - (visibleDuration / 2)));
+        // Dynamically scroll to keep playhead in view
+        if (currentTime > endTime - visibilityThreshold) {
+          // Scroll to keep playhead on right side
+          const newOffset = Math.max(0, Math.min(
+            duration - visibleDuration, 
+            currentTime - visibleDuration * 0.8
+          ));
+          setWaveformOffset(newOffset);
+        } else if (currentTime < startTime + visibilityThreshold) {
+          // Scroll to keep playhead on left side
+          const newOffset = Math.max(0, Math.min(
+            duration - visibleDuration, 
+            currentTime - visibleDuration * 0.2
+          ));
           setWaveformOffset(newOffset);
         }
       }
     };
   
-    // Use both timeupdate and a more frequent requestAnimationFrame for smoother updates when playing
+    // Use both timeupdate and requestAnimationFrame for smooth updates
     const animatePlayhead = () => {
       if (isPlayingRef.current && audioElement) {
         updatePlaybackTime();
@@ -178,7 +208,7 @@ const WaveformVisualizer = ({
     // Start animation loop
     animatePlayhead();
     
-    // Also listen for timeupdate for when user manually seeks
+    // Event listeners
     audioElement.addEventListener('timeupdate', updatePlaybackTime);
     audioElement.addEventListener('play', () => { isPlayingRef.current = true; });
     audioElement.addEventListener('pause', () => { isPlayingRef.current = false; });
@@ -194,7 +224,7 @@ const WaveformVisualizer = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [audioRef]);
+  }, [audioRef, followPlayhead, zoomLevel, waveformOffset, duration]);
   
   // Effect to center the view on the start point when it changes
   useEffect(() => {
@@ -805,16 +835,31 @@ const WaveformVisualizer = ({
   
   {/* Follow Playhead checkbox */}
   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-    <input 
-      type="checkbox" 
-      id="follow-playhead" 
-      checked={followPlayhead}
-      onChange={() => setFollowPlayhead(prev => !prev)}
-    />
-    <label htmlFor="follow-playhead" style={{ color: 'white', fontSize: '12px' }}>
-      Follow Playhead
-    </label>
-  </div>
+        <input 
+          type="checkbox" 
+          id="follow-playhead" 
+          checked={followPlayhead}
+          onChange={() => {
+            // Toggle follow playhead and save to IndexedDB
+            const newFollowPlayhead = !followPlayhead;
+            setFollowPlayhead(newFollowPlayhead);
+            
+            // Optionally, save to IndexedDB immediately
+            if (audioUrl) {
+              storeVisualizerState(audioUrl, {
+                zoomLevel,
+                waveformOffset,
+                followPlayhead: newFollowPlayhead,
+                startPoint: musicStartPoint
+              }).catch(err => console.error("Error saving follow playhead state:", err));
+            }
+          }}
+        />
+        <label htmlFor="follow-playhead" style={{ color: 'white', fontSize: '12px' }}>
+          Follow Playhead
+        </label>
+      </div>
+
 </div>
           
           {/* Navigation controls */}
