@@ -1,6 +1,72 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStartPoint = 0 }) => {
+// IndexedDB helper functions
+const initIndexedDB = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('AudioPositionsDB', 1);
+    
+    request.onerror = (event) => reject('IndexedDB error: ' + event.target.errorCode);
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('audioPositions')) {
+        db.createObjectStore('audioPositions', { keyPath: 'audioUrl' });
+      }
+    };
+    
+    request.onsuccess = (event) => resolve(event.target.result);
+  });
+};
+
+const storeAudioPositions = async (audioUrl, data) => {
+  try {
+    const db = await initIndexedDB();
+    const transaction = db.transaction(['audioPositions'], 'readwrite');
+    const store = transaction.objectStore('audioPositions');
+    
+    return new Promise((resolve, reject) => {
+      const request = store.put({
+        audioUrl,
+        ...data,
+        timestamp: Date.now()
+      });
+      
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => reject(false);
+    });
+  } catch (error) {
+    console.error('Error storing positions data:', error);
+    return false;
+  }
+};
+
+const getAudioPositions = async (audioUrl) => {
+  try {
+    const db = await initIndexedDB();
+    const transaction = db.transaction(['audioPositions'], 'readonly');
+    const store = transaction.objectStore('audioPositions');
+    
+    return new Promise((resolve, reject) => {
+      const request = store.get(audioUrl);
+      
+      request.onsuccess = (event) => {
+        resolve(event.target.result || null);
+      };
+      
+      request.onerror = () => reject(null);
+    });
+  } catch (error) {
+    console.error('Error retrieving positions data:', error);
+    return null;
+  }
+};
+
+const WaveformVisualizer = ({ 
+  audioUrl, 
+  onStartPointChange,
+  audioRef, 
+  musicStartPoint = 0
+}) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [audioBuffer, setAudioBuffer] = useState(null);
@@ -10,57 +76,129 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(1); // 1 = full waveform visible
   const [waveformOffset, setWaveformOffset] = useState(0); // Horizontal scroll position
+  const [followPlayhead, setFollowPlayhead] = useState(false);
+
+
+  // Add refs to track loaded audioUrl and animation frame
+  const loadedAudioUrlRef = useRef(null);
+  const animationFrameRef = useRef(null);
+  const isPlayingRef = useRef(false);
   
-  // Load and decode audio data
+  // Load audio data and retrieve positions from IndexedDB
   useEffect(() => {
-    if (!audioUrl) return;
+    if (!audioUrl || loadedAudioUrlRef.current === audioUrl) return;
     
+    loadedAudioUrlRef.current = audioUrl;
     setIsLoading(true);
     
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    
-    fetch(audioUrl)
-      .then(response => response.arrayBuffer())
-      .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
-      .then(buffer => {
+    const loadAudioAndPositions = async () => {
+      try {
+        // First check if we have cached positions
+        const cachedData = await getAudioPositions(audioUrl);
+        
+        // Initialize audio context and decode the audio file
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const response = await fetch(audioUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = await audioContext.decodeAudioData(arrayBuffer);
+        
         setAudioBuffer(buffer);
         setDuration(buffer.duration);
+        
+        // If we have cached positions, use them
+        if (cachedData) {
+          console.log('Using cached position data');
+          
+          // Only update if they're different to prevent loops
+          if (onStartPointChange && Math.abs(cachedData.startPoint - musicStartPoint) > 0.001) {
+            onStartPointChange(cachedData.startPoint);
+          }
+        }
+        
         setIsLoading(false);
-      })
-      .catch(error => {
-        console.error("Error decoding audio data", error);
+      } catch (error) {
+        console.error("Error loading audio:", error);
         setIsLoading(false);
-      });
-  }, [audioUrl]);
-
+      }
+    };
+    
+    loadAudioAndPositions();
+  }, [audioUrl, onStartPointChange, musicStartPoint]);
+  
   // Update canvas width on mount
   useEffect(() => {
     if (canvasRef.current) {
       const canvas = canvasRef.current;
       setCanvasWidth(canvas.width);
     }
-  }, [canvasRef.current]);
+  }, []);
   
-  // Enhanced time update handler with millisecond precision
+  // Enhanced time update handler with millisecond precision and improved sync
   useEffect(() => {
     const audioElement = audioRef?.current;
     if (!audioElement) return;
-
+  
     const updatePlaybackTime = () => {
-      // Set with full precision
-      setCurrentPlaybackTime(audioElement.currentTime);
+      // Get current time directly from the audio element
+      const currentTime = audioElement.currentTime;
+      
+      // Update state with precise timing
+      setCurrentPlaybackTime(currentTime);
+      
+      // Update isPlaying ref based on audio element state
+      isPlayingRef.current = !audioElement.paused;
+      
+      // Auto-scroll when follow mode is enabled and playing
+      if (followPlayhead && isPlayingRef.current) {
+        const visibleDuration = duration / zoomLevel;
+        
+        // Check if playhead is near the edge of the visible window
+        const startTime = waveformOffset;
+        const endTime = startTime + visibleDuration;
+        const visibilityThreshold = visibleDuration * 0.2; // 20% from edge
+        
+        // If playhead is approaching edge of view, scroll to keep it centered
+        if (currentTime > endTime - visibilityThreshold || currentTime < startTime + visibilityThreshold) {
+          // Calculate new offset with playhead in center
+          const newOffset = Math.max(0, Math.min(duration - visibleDuration, 
+                                             currentTime - (visibleDuration / 2)));
+          setWaveformOffset(newOffset);
+        }
+      }
     };
-
+  
+    // Use both timeupdate and a more frequent requestAnimationFrame for smoother updates when playing
+    const animatePlayhead = () => {
+      if (isPlayingRef.current && audioElement) {
+        updatePlaybackTime();
+      }
+      animationFrameRef.current = requestAnimationFrame(animatePlayhead);
+    };
+    
+    // Start animation loop
+    animatePlayhead();
+    
+    // Also listen for timeupdate for when user manually seeks
     audioElement.addEventListener('timeupdate', updatePlaybackTime);
+    audioElement.addEventListener('play', () => { isPlayingRef.current = true; });
+    audioElement.addEventListener('pause', () => { isPlayingRef.current = false; });
+    audioElement.addEventListener('seeking', updatePlaybackTime);
 
     return () => {
       audioElement.removeEventListener('timeupdate', updatePlaybackTime);
+      audioElement.removeEventListener('play', () => { isPlayingRef.current = true; });
+      audioElement.removeEventListener('pause', () => { isPlayingRef.current = false; });
+      audioElement.removeEventListener('seeking', updatePlaybackTime);
+      
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, [audioRef]);
   
   // Effect to center the view on the start point when it changes
   useEffect(() => {
-    if (!audioBuffer || duration === 0) return;
+    if (!audioBuffer || duration === 0 || !audioUrl) return;
     
     // Center the view on the start point when zoomed in
     if (zoomLevel > 1) {
@@ -68,10 +206,35 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
       const newOffset = Math.max(0, Math.min(duration - visibleDuration, musicStartPoint - (visibleDuration / 2)));
       setWaveformOffset(newOffset);
     }
-  }, [musicStartPoint, zoomLevel, audioBuffer, duration]);
+    
+    // Avoid excessive IndexedDB writes - use debouncing
+    const saveTimer = setTimeout(() => {
+      // Store positions in IndexedDB
+      storeAudioPositions(audioUrl, {
+        startPoint: musicStartPoint
+      }).catch(err => console.error("Error saving to IndexedDB:", err));
+    }, 1000); // Debounce for 1 second
+    
+    return () => clearTimeout(saveTimer);
+  }, [musicStartPoint, zoomLevel, audioBuffer, duration, audioUrl]);
+
+  // Format time with or without milliseconds
+  const formatTime = (timeInSeconds, showMs = true) => {
+    if (isNaN(timeInSeconds)) return "00:00.000";
+    
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    
+    if (showMs) {
+      const milliseconds = Math.floor((timeInSeconds % 1) * 1000);
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+    } else {
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+  };
   
-  // Draw waveform
-  useEffect(() => {
+  // Draw waveform - use useCallback to prevent excessive redraws
+  const drawWaveform = useCallback(() => {
     if (!audioBuffer || !canvasRef.current) return;
     
     const canvas = canvasRef.current;
@@ -100,7 +263,7 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
     const endSample = Math.floor((endTime / duration) * totalSamples);
     const visibleSamples = endSample - startSample;
     
-    // Draw waveform
+    // Draw waveform with higher resolution for better detail
     const barWidth = 1;
     const barGap = 0;
     const totalBars = Math.floor(width / (barWidth + barGap));
@@ -137,15 +300,33 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
       ctx.fillRect(x, y, barWidth, barHeight);
     }
     
+    // Add amplitude level guide lines
+    ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+    ctx.lineWidth = 1;
+    // Center line
+    ctx.beginPath();
+    ctx.moveTo(0, height/2);
+    ctx.lineTo(width, height/2);
+    ctx.stroke();
+    // 25% and 75% amplitude lines
+    ctx.beginPath();
+    ctx.moveTo(0, height/4);
+    ctx.lineTo(width, height/4);
+    ctx.moveTo(0, 3*height/4);
+    ctx.lineTo(width, 3*height/4);
+    ctx.stroke();
+    
     // Draw time markers
     ctx.fillStyle = '#777';
     ctx.font = '10px Arial';
     
     // Determine appropriate time step based on zoom level
     let timeStep = 1.0; // Default 1 second
-    if (zoomLevel >= 8) timeStep = 0.1; // 100ms
-    else if (zoomLevel >= 4) timeStep = 0.25; // 250ms
-    else if (zoomLevel >= 2) timeStep = 0.5; // 500ms
+    if (zoomLevel >= 32) timeStep = 0.05; // 50ms
+    else if (zoomLevel >= 16) timeStep = 0.1; // 100ms
+    else if (zoomLevel >= 8) timeStep = 0.25; // 250ms
+    else if (zoomLevel >= 4) timeStep = 0.5; // 500ms
+    else if (zoomLevel >= 2) timeStep = 1.0; // 1 second
     
     for (let time = Math.ceil(startTime / timeStep) * timeStep; time <= endTime; time += timeStep) {
       // Convert time to x position
@@ -155,19 +336,36 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
       ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
       ctx.fillRect(timeX, 0, 1, height);
       
-      // Draw time label
-      if (timeStep >= 0.5 || Math.round(time * 10) % 10 === 0) { // Only show some labels when zoomed in
+      // Draw time label (only on certain intervals to prevent overcrowding)
+      const shouldShowLabel = 
+        (timeStep >= 1.0) ||
+        (timeStep >= 0.5 && time * 2 % 2 === 0) ||
+        (timeStep >= 0.25 && time * 4 % 4 === 0) ||
+        (timeStep >= 0.1 && time * 10 % 10 === 0) ||
+        (timeStep >= 0.05 && time * 20 % 20 === 0);
+      
+      if (shouldShowLabel) {
         ctx.fillStyle = '#AAA';
         ctx.textAlign = 'center';
         ctx.fillText(formatTime(time, false), timeX, height - 5);
       }
     }
     
-    // Draw playhead position
+    // Draw playhead position with improved accuracy
     if (currentPlaybackTime >= startTime && currentPlaybackTime <= endTime) {
       const playheadX = ((currentPlaybackTime - startTime) / visibleDuration) * width;
+      
+      // Draw playhead line
       ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
       ctx.fillRect(playheadX - 1, 0, 2, height);
+      
+      // Add playhead marker at top for better visibility
+      ctx.beginPath();
+      ctx.moveTo(playheadX, 0);
+      ctx.lineTo(playheadX - 4, -4);
+      ctx.lineTo(playheadX + 4, -4);
+      ctx.closePath();
+      ctx.fill();
     }
     
     // Draw start point marker
@@ -190,24 +388,20 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
     ctx.fillStyle = 'rgba(100, 100, 255, 0.5)';
     ctx.fillRect(0, height - zoomIndicatorHeight, width * (visibleDuration / duration), zoomIndicatorHeight);
     
-  }, [audioBuffer, currentPlaybackTime, zoomLevel, waveformOffset, canvasWidth, duration, musicStartPoint]);
+  }, [audioBuffer, currentPlaybackTime, zoomLevel, waveformOffset, duration, musicStartPoint, canvasWidth]);
   
-  // Format time with or without milliseconds
-  const formatTime = (timeInSeconds, showMs = true) => {
-    const minutes = Math.floor(timeInSeconds / 60);
-    const seconds = Math.floor(timeInSeconds % 60);
-    
-    if (showMs) {
-      const milliseconds = Math.floor((timeInSeconds % 1) * 1000);
-      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
-    } else {
-      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  // Effect to trigger waveform drawing
+  useEffect(() => {
+    // Use requestAnimationFrame for smoother rendering
+    if (audioBuffer && !isLoading) {
+      const animationId = requestAnimationFrame(drawWaveform);
+      return () => cancelAnimationFrame(animationId);
     }
-  };
+  }, [audioBuffer, currentPlaybackTime, zoomLevel, waveformOffset, duration, musicStartPoint, isLoading, drawWaveform]);
   
-  // Handle waveform click to set playback position
+  // Handle waveform click to set playback position with improved accuracy
   const handleWaveformClick = (e) => {
-    if (!audioBuffer || !canvasRef.current) return;
+    if (!audioBuffer || !canvasRef.current || isDragging) return;
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -217,7 +411,7 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
     const visibleDuration = duration / zoomLevel;
     const startTime = Math.max(0, Math.min(duration - visibleDuration, waveformOffset));
     
-    // Calculate click time
+    // Calculate click time with high precision
     const clickTime = startTime + (clickX / canvas.width) * visibleDuration;
     const preciseTime = Math.round(clickTime * 1000) / 1000; // Round to milliseconds
     
@@ -226,24 +420,30 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
       audioRef.current.currentTime = preciseTime;
     }
     
-    // Update playback position
+    // Update playback position immediately for responsive UI
     setCurrentPlaybackTime(preciseTime);
   };
   
-  // Zoom controls - focus on start point or current position
+  // Zoom controls with improved behavior
   const handleZoomIn = () => {
     setZoomLevel(prev => {
-      const newZoom = Math.min(32, prev * 2);
+      // Max zoom is 64x
+      if (prev >= 64) return prev;
       
-      // When zooming in, center the view on start point
-      // If playback is far from start point, use current playback position instead
+      const newZoom = Math.min(64, prev * 2);
+      
+      // When zooming in, preserve the center view
       if (audioBuffer) {
-        const visibleDuration = duration / newZoom;
-        const focusTime = Math.abs(currentPlaybackTime - musicStartPoint) > visibleDuration ? 
-                          currentPlaybackTime : musicStartPoint;
+        // Calculate the center time of the current view
+        const visibleDuration = duration / prev;
+        const currentCenterTime = waveformOffset + (visibleDuration / 2);
         
-        const newOffset = Math.max(0, Math.min(duration - visibleDuration, 
-                                              focusTime - (visibleDuration / 2)));
+        // Calculate new visible duration with new zoom
+        const newVisibleDuration = duration / newZoom;
+        
+        // Center the new view on the same time point
+        const newOffset = Math.max(0, Math.min(duration - newVisibleDuration, 
+                                              currentCenterTime - (newVisibleDuration / 2)));
         setWaveformOffset(newOffset);
       }
       
@@ -253,16 +453,24 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
   
   const handleZoomOut = () => {
     setZoomLevel(prev => {
+      if (prev <= 1) return 1;
+      
       const newZoom = Math.max(1, prev / 2);
       
       // When fully zoomed out, reset offset
       if (newZoom === 1) {
         setWaveformOffset(0);
       } else if (audioBuffer) {
-        // Keep the view centered on the start point
-        const visibleDuration = duration / newZoom;
-        const newOffset = Math.max(0, Math.min(duration - visibleDuration, 
-                                              musicStartPoint - (visibleDuration / 2)));
+        // Calculate the center time of the current view
+        const visibleDuration = duration / prev;
+        const currentCenterTime = waveformOffset + (visibleDuration / 2);
+        
+        // Calculate new visible duration with new zoom
+        const newVisibleDuration = duration / newZoom;
+        
+        // Center the new view on the same time point
+        const newOffset = Math.max(0, Math.min(duration - newVisibleDuration, 
+                                              currentCenterTime - (newVisibleDuration / 2)));
         setWaveformOffset(newOffset);
       }
       
@@ -281,7 +489,7 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
     setWaveformOffset(newOffset);
   };
   
-  // Scroll waveform horizontally
+  // Scroll waveform horizontally with improved precision
   const handleScroll = (e) => {
     if (!audioBuffer) return;
     
@@ -291,8 +499,8 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
     const visibleDuration = duration / zoomLevel;
     const maxOffset = Math.max(0, duration - visibleDuration);
     
-    // Adjust scroll speed based on zoom level
-    const scrollSpeed = 0.1 * visibleDuration;
+    // Adjust scroll speed based on zoom level for better fine control
+    const scrollSpeed = 0.05 * visibleDuration; // Lower factor for more precise control
     
     if (e.deltaY > 0) {
       // Scroll right
@@ -343,43 +551,35 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
   
   // Set start point to current playback position
   const handleSetStartPoint = () => {
-    if (!audioRef?.current) return;
+    if (!audioRef?.current || !onStartPointChange) return;
+    
+    // Get current position with high precision
+    const startTime = audioRef.current.currentTime;
     
     // Round to millisecond precision
-    const startTime = Math.round(currentPlaybackTime * 1000) / 1000;
+    const preciseTime = Math.round(startTime * 1000) / 1000;
     
     // Notify parent component
-    onStartPointChange(startTime);
-    
-    // If zoomed in, make sure start point is visible
-    if (zoomLevel > 1) {
-      const visibleDuration = duration / zoomLevel;
-      const startTime = waveformOffset;
-      const endTime = startTime + visibleDuration;
-      
-      // If start point is outside visible area, center the view on it
-      if (startTime > currentPlaybackTime || endTime < currentPlaybackTime) {
-        const newOffset = Math.max(0, Math.min(duration - visibleDuration, 
-                                              currentPlaybackTime - (visibleDuration / 2)));
-        setWaveformOffset(newOffset);
-      }
-    }
+    onStartPointChange(preciseTime);
   };
   
-  // Fine tune adjustments with millisecond precision
-  const adjustTimeByMs = (milliseconds) => {
+  // Frame forward/backward navigation with improved precision
+  const adjustTimeByFrame = (frames) => {
     if (!audioRef?.current) return;
     
-    // Calculate new time with millisecond precision
-    const newTime = Math.max(0, Math.min(duration, currentPlaybackTime + (milliseconds / 1000)));
+    // Assume 30fps for video frames (33.33ms per frame)
+    const frameTime = 1/30;
     
-    // Round to 3 decimal places for consistent ms display
+    // Calculate new time
+    const newTime = Math.max(0, Math.min(duration, currentPlaybackTime + (frameTime * frames)));
+    
+    // Round to frame precision
     const preciseTime = Math.round(newTime * 1000) / 1000;
     
     // Update audio position
     audioRef.current.currentTime = preciseTime;
     
-    // Update playback position
+    // Update playback position immediately for responsiveness
     setCurrentPlaybackTime(preciseTime);
     
     // If zoomed in, make sure adjusted position is visible
@@ -397,7 +597,7 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
     }
   };
   
-  // Direct time input
+  // Direct time input with improved validation
   const handleDirectTimeInput = () => {
     const timeStr = prompt("Enter time (MM:SS.mmm):", formatTime(currentPlaybackTime));
     if (!timeStr) return;
@@ -411,7 +611,7 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
       if (secondsPart.includes('.')) {
         const [secondsWhole, millisecondsStr] = secondsPart.split('.');
         seconds = parseInt(secondsWhole, 10);
-        milliseconds = parseInt(millisecondsStr, 10);
+        milliseconds = parseInt(millisecondsStr.padEnd(3, '0').slice(0, 3), 10);
       } else {
         seconds = parseInt(secondsPart, 10);
       }
@@ -435,7 +635,7 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
         if (zoomLevel > 1) {
           const visibleDuration = duration / zoomLevel;
           const newOffset = Math.max(0, Math.min(duration - visibleDuration, 
-                                                totalSeconds - (visibleDuration / 2)));
+                                              totalSeconds - (visibleDuration / 2)));
           setWaveformOffset(newOffset);
         }
       } else {
@@ -452,271 +652,257 @@ const WaveformVisualizer = ({ audioUrl, onStartPointChange, audioRef, musicStart
         <div className="waveform-loading">Loading waveform...</div>
       ) : (
         <>
-          {/* Waveform canvas with interaction handlers */}
-          <div 
-            className="waveform-canvas-container" 
-            style={{ position: 'relative', cursor: isDragging ? 'grabbing' : 'grab' }}
-            onWheel={handleScroll}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onClick={!isDragging ? handleWaveformClick : null}
-          >
-            <canvas 
-              ref={canvasRef} 
-              width={800} 
-              height={80} 
-              className="waveform-canvas"
-            />
-            
-            {/* Zoom controls overlay */}
-            <div 
-              className="zoom-controls" 
-              style={{
-                position: 'absolute',
-                top: '5px',
-                right: '5px',
-                display: 'flex',
-                gap: '5px'
-              }}
-            >
-              <button 
-                onClick={handleZoomIn}
-                style={{
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '3px',
-                  width: '24px',
-                  height: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  cursor: 'pointer'
-                }}
-              >+</button>
-              <button 
-                onClick={handleZoomOut}
-                style={{
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '3px',
-                  width: '24px',
-                  height: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  cursor: 'pointer'
-                }}
-              >-</button>
-            </div>
-            
-            {/* Focus on start point button */}
-            <button
-              onClick={focusOnStartPoint}
-              style={{
-                position: 'absolute',
-                top: '5px',
-                left: '30px',
-                background: 'rgba(255, 215, 0, 0.5)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '3px',
-                padding: '2px 6px',
-                fontSize: '10px',
-                cursor: 'pointer'
-              }}
-              title="Focus view on start point"
-            >
-              Find Start
-            </button>
-            
-            {/* Zoom level indicator */}
-            <div 
-              style={{
-                position: 'absolute',
-                top: '5px',
-                left: '5px',
-                background: 'rgba(0, 0, 0, 0.5)',
-                color: 'white',
-                borderRadius: '3px',
-                padding: '2px 5px',
-                fontSize: '10px'
-              }}
-            >
-              {zoomLevel}x
-            </div>
-          </div>
+         {/* Waveform canvas with interaction handlers */}
+<div 
+  className="waveform-canvas-container" 
+  style={{ position: 'relative', cursor: isDragging ? 'grabbing' : 'grab' }}
+  onWheel={handleScroll}
+  onMouseDown={handleMouseDown}
+  onMouseMove={handleMouseMove}
+  onMouseUp={handleMouseUp}
+  onMouseLeave={handleMouseUp}
+  onClick={handleWaveformClick}
+>
+  <canvas 
+    ref={canvasRef} 
+    width={800} 
+    height={80} 
+    className="waveform-canvas"
+  />
+  
+  {/* Focus on start point button */}
+  <button
+    onClick={focusOnStartPoint}
+    style={{
+      position: 'absolute',
+      top: '5px',
+      left: '30px',
+      background: 'rgba(255, 215, 0, 0.5)',
+      color: 'white',
+      border: 'none',
+      borderRadius: '3px',
+      padding: '2px 6px',
+      fontSize: '10px',
+      cursor: 'pointer'
+    }}
+    title="Focus view on start point"
+  >
+    Find Start
+  </button>
+  
+  {/* Zoom level indicator */}
+  <div 
+    style={{
+      position: 'absolute',
+      top: '5px',
+      left: '5px',
+      background: 'rgba(0, 0, 0, 0.5)',
+      color: 'white',
+      borderRadius: '3px',
+      padding: '2px 5px',
+      fontSize: '10px'
+    }}
+  >
+    {zoomLevel}x
+  </div>
+</div>
+
+{/* Time display with millisecond precision */}
+<div 
+  className="waveform-timestamps"
+  style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '5px 0',
+    fontSize: '12px',
+    fontFamily: 'monospace'
+  }}
+>
+  <span 
+    className="current-time"
+    style={{
+      color: 'white',
+      background: 'rgba(255, 0, 0, 0.2)',
+      borderRadius: '3px',
+      padding: '2px 5px',
+      cursor: 'pointer'
+    }}
+    onClick={handleDirectTimeInput}
+    title="Click to enter exact time"
+  >
+    {formatTime(currentPlaybackTime)}
+  </span>
+  
+  <span 
+    className="start-point"
+    style={{
+      color: 'white',
+      background: 'rgba(255, 215, 0, 0.2)',
+      borderRadius: '3px',
+      padding: '2px 5px',
+      cursor: 'pointer'
+    }}
+    onClick={focusOnStartPoint}
+    title="Click to focus on start point"
+  >
+    Start: {formatTime(musicStartPoint)}
+  </span>
+  
+  <span 
+    className="duration"
+    style={{
+      color: 'white',
+      background: 'rgba(100, 100, 100, 0.2)',
+      borderRadius: '3px',
+      padding: '2px 5px'
+    }}
+  >
+    Total: {formatTime(duration)}
+  </span>
+</div>
+
+{/* Zoom controls and Follow Playhead in same row */}
+<div style={{ 
+  display: 'flex', 
+  alignItems: 'center', 
+  justifyContent: 'space-between',
+  padding: '5px 0',
+  margin: '5px 0' 
+}}>
+  {/* Zoom controls */}
+  <div style={{ display: 'flex', gap: '5px' }}>
+    <button 
+      onClick={handleZoomOut}
+      disabled={zoomLevel <= 1}
+      style={{
+        background: zoomLevel <= 1 ? '#555' : '#333',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        padding: '3px 8px',
+        fontSize: '12px',
+        cursor: zoomLevel <= 1 ? 'not-allowed' : 'pointer'
+      }}
+    >
+      Zoom Out
+    </button>
+    <button 
+      onClick={handleZoomIn}
+      disabled={zoomLevel >= 64}
+      style={{
+        background: zoomLevel >= 64 ? '#555' : '#333',
+        color: 'white',
+        border: 'none',
+        borderRadius: '3px',
+        padding: '3px 8px',
+        fontSize: '12px',
+        cursor: zoomLevel >= 64 ? 'not-allowed' : 'pointer'
+      }}
+    >
+      Zoom In
+    </button>
+  </div>
+  
+  {/* Follow Playhead checkbox */}
+  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+    <input 
+      type="checkbox" 
+      id="follow-playhead" 
+      checked={followPlayhead}
+      onChange={() => setFollowPlayhead(prev => !prev)}
+    />
+    <label htmlFor="follow-playhead" style={{ color: 'white', fontSize: '12px' }}>
+      Follow Playhead
+    </label>
+  </div>
+</div>
           
-          {/* Time display with millisecond precision */}
+          {/* Navigation controls */}
           <div 
-            className="waveform-timestamps"
+            className="navigation-controls"
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
-              padding: '5px 0',
-              fontSize: '12px',
-              fontFamily: 'monospace'
-            }}
-          >
-            <span 
-              className="current-time"
-              style={{
-                color: 'white',
-                background: 'rgba(255, 0, 0, 0.2)',
-                borderRadius: '3px',
-                padding: '2px 5px',
-                cursor: 'pointer'
-              }}
-              onClick={handleDirectTimeInput}
-              title="Click to enter exact time"
-            >
-              {formatTime(currentPlaybackTime)}
-            </span>
-            
-            <span 
-              className="start-point"
-              style={{
-                color: 'white',
-                background: 'rgba(255, 215, 0, 0.2)',
-                borderRadius: '3px',
-                padding: '2px 5px',
-                cursor: 'pointer'
-              }}
-              onClick={focusOnStartPoint}
-              title="Click to focus on start point"
-            >
-              Start: {formatTime(musicStartPoint)}
-            </span>
-            
-            <span 
-              className="duration"
-              style={{
-                color: 'white',
-                background: 'rgba(100, 100, 100, 0.2)',
-                borderRadius: '3px',
-                padding: '2px 5px'
-              }}
-            >
-              Total: {formatTime(duration)}
-            </span>
-          </div>
-          
-          {/* Controls row */}
-          <div 
-            className="waveform-controls"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
+              justifyContent: 'center',
               gap: '8px',
-              padding: '5px 0'
+              padding: '10px 0'
             }}
           >
-            {/* Set start point button */}
-            <button 
-              className="set-start-point-button" 
-              onClick={handleSetStartPoint}
+            {/* Frame navigation buttons with improved controls */}
+            <button
+              onClick={() => adjustTimeByFrame(-5)}
               style={{
-                background: '#FFD700',
+                background: '#444',
                 border: 'none',
                 borderRadius: '4px',
-                padding: '8px',
-                color: '#333',
-                fontWeight: 'bold',
+                padding: '6px 12px',
+                color: 'white',
                 cursor: 'pointer'
               }}
             >
-              Set Start Point
+              -5 Frames
             </button>
             
-            {/* Fine tune controls */}
-            <div 
-              className="fine-tune-controls"
+            <button
+              onClick={() => adjustTimeByFrame(-1)}
               style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '4px',
-                flexWrap: 'wrap'
+                background: '#444',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '6px 12px',
+                color: 'white',
+                cursor: 'pointer'
               }}
             >
-              <button 
-                onClick={() => adjustTimeByMs(-100)}
-                style={{
-                  background: '#444',
-                  border: 'none',
-                  borderRadius: '3px',
-                  padding: '4px 8px',
-                  color: 'white',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >-100ms</button>
-              <button 
-                onClick={() => adjustTimeByMs(-10)}
-                style={{
-                  background: '#444',
-                  border: 'none',
-                  borderRadius: '3px',
-                  padding: '4px 8px',
-                  color: 'white',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >-10ms</button>
-              <button 
-                onClick={() => adjustTimeByMs(-1)}
-                style={{
-                  background: '#444',
-                  border: 'none',
-                  borderRadius: '3px',
-                  padding: '4px 8px',
-                  color: 'white',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >-1ms</button>
-              <button 
-                onClick={() => adjustTimeByMs(1)}
-                style={{
-                  background: '#444',
-                  border: 'none',
-                  borderRadius: '3px',
-                  padding: '4px 8px',
-                  color: 'white',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >+1ms</button>
-              <button 
-                onClick={() => adjustTimeByMs(10)}
-                style={{
-                  background: '#444',
-                  border: 'none',
-                  borderRadius: '3px',
-                  padding: '4px 8px',
-                  color: 'white',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >+10ms</button>
-              <button 
-                onClick={() => adjustTimeByMs(100)}
-                style={{
-                  background: '#444',
-                  border: 'none',
-                  borderRadius: '3px',
-                  padding: '4px 8px',
-                  color: 'white',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >+100ms</button>
-            </div>
+              Frame Back
+            </button>
+            
+            <button
+              onClick={() => adjustTimeByFrame(1)}
+              style={{
+                background: '#444',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '6px 12px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Frame Forward
+            </button>
+            
+            <button
+              onClick={() => adjustTimeByFrame(5)}
+              style={{
+                background: '#444',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '6px 12px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              +5 Frames
+            </button>
           </div>
+          
+          {/* Set start point button */}
+          <button 
+            className="set-start-point-button" 
+            onClick={handleSetStartPoint}
+            style={{
+              background: '#FFD700',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '10px',
+              margin: '5px 0',
+              color: '#333',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              width: '100%'
+            }}
+          >
+            Set Start Point
+          </button>
         </>
       )}
     </div>
