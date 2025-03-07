@@ -22,6 +22,29 @@ const initIndexedDB = () => {
   });
 };
 
+// Store audio positions in IndexedDB
+const storeAudioPositions = async (audioUrl, positionData) => {
+  try {
+    const db = await initIndexedDB();
+    const transaction = db.transaction(["audioPositions"], "readwrite");
+    const store = transaction.objectStore("audioPositions");
+
+    return new Promise((resolve, reject) => {
+      const request = store.put({
+        audioUrl,
+        ...positionData,
+        timestamp: Date.now(),
+      });
+
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => reject(false);
+    });
+  } catch (error) {
+    console.error("Error storing audio positions:", error);
+    return false;
+  }
+};
+
 // Store visualizer state in IndexedDB
 const storeVisualizerState = async (audioUrl, state) => {
   try {
@@ -495,31 +518,44 @@ const WaveformVisualizer = ({
   ]);
 
   // Handle waveform click to set playback position with improved accuracy
-  const handleWaveformClick = (e) => {
-    if (!audioBuffer || !canvasRef.current || isDragging) return;
 
+  const handleWaveformClick = (e) => {
+    // Prevent default behavior
+    e.preventDefault();
+    e.stopPropagation();
+  
+    if (!audioBuffer || !canvasRef.current || isDragging) return;
+  
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-
-    // Calculate visible duration based on zoom level
-    const visibleDuration = duration / zoomLevel;
-    const startTime = Math.max(
-      0,
-      Math.min(duration - visibleDuration, waveformOffset)
-    );
-
-    // Calculate click time with high precision
-    const clickTime = startTime + (clickX / canvas.width) * visibleDuration;
-    const preciseTime = Math.round(clickTime * 1000) / 1000; // Round to milliseconds
-
+    
+    // Get coordinates for both mouse and touch events
+    const clientX = e.type.includes('touch') 
+      ? (e.touches ? e.touches[0].clientX : e.changedTouches[0].clientX)
+      : e.clientX;
+    
+    const clickX = clientX - rect.left;
+  
+    // Calculate click time based on total duration, not just visible duration
+    const clickRatio = clickX / canvas.width;
+    const preciseTime = Math.max(0, Math.min(duration, duration * clickRatio));
+  
     // Update audio position
     if (audioRef?.current) {
       audioRef.current.currentTime = preciseTime;
     }
-
-    // Update playback position immediately for responsive UI
+  
+    // Update playback position immediately
     setCurrentPlaybackTime(preciseTime);
+  
+    console.log({
+      eventType: e.type,
+      clickX,
+      canvasWidth: canvas.width,
+      totalDuration: duration,
+      clickRatio,
+      clickTime: preciseTime
+    });
   };
 
   // Zoom controls with improved behavior
@@ -772,26 +808,65 @@ const WaveformVisualizer = ({
         <div className="waveform-loading">Loading waveform...</div>
       ) : (
         <>
-          {/* Waveform canvas with interaction handlers */}
-          <div
-            className="waveform-canvas-container"
-            style={{
-              position: "relative",
-              cursor: isDragging ? "grabbing" : "grab",
-            }}
-            onWheel={handleScroll}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onClick={handleWaveformClick}
-          >
-            <canvas
-              ref={canvasRef}
-              width={800}
-              height={80}
-              className="waveform-canvas"
-            />
+<div
+  className="waveform-canvas-container"
+  style={{
+    position: "relative",
+    cursor: isDragging ? "grabbing" : "grab",
+  }}
+  onWheel={handleScroll}
+  onMouseDown={handleMouseDown}
+  onMouseMove={handleMouseMove}
+  onMouseUp={handleMouseUp}
+  onMouseLeave={handleMouseUp}
+  onClick={handleWaveformClick}
+  onTouchStart={(e) => {
+    if (!audioBuffer) return;
+    e.preventDefault(); // Prevent default touch behavior
+    const touch = e.touches[0];
+    setIsDragging(true);
+    setDragStartX(touch.clientX);
+    e.currentTarget.style.cursor = "grabbing";
+  }}
+  onTouchMove={(e) => {
+    if (!isDragging || !audioBuffer) return;
+    e.preventDefault(); // Prevent scrolling while dragging
+
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragStartX;
+    const visibleDuration = duration / zoomLevel;
+    const pixelsPerSecond = canvasWidth / visibleDuration;
+
+    // Convert pixel drag to time
+    const timeChange = dx / pixelsPerSecond;
+
+    // Update offset
+    const maxOffset = Math.max(0, duration - visibleDuration);
+    setWaveformOffset((prev) => {
+      const newOffset = Math.max(0, Math.min(maxOffset, prev - timeChange));
+      return newOffset;
+    });
+
+    setDragStartX(touch.clientX);
+  }}
+  onTouchEnd={(e) => {
+    if (!isDragging) {
+      handleWaveformClick(e);
+    }
+    setIsDragging(false);
+    e.currentTarget.style.cursor = "grab";
+  }}
+  onTouchCancel={(e) => {
+    setIsDragging(false);
+    e.currentTarget.style.cursor = "grab";
+  }}
+>
+  <canvas
+    ref={canvasRef}
+    width={800}
+    height={80}
+    className="waveform-canvas"
+  />
 
             {/* Focus on start point button */}
             <button
@@ -928,7 +1003,7 @@ const WaveformVisualizer = ({
               </button>
             </div>
 
-            {/* Follow Playhead checkbox */}
+            {/* Follow Playhead checkbox 
             <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
               <input
                 type="checkbox"
@@ -958,7 +1033,7 @@ const WaveformVisualizer = ({
               >
                 Follow Playhead
               </label>
-            </div>
+            </div>*/}
           </div>
 
           <div 
