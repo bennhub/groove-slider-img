@@ -3,18 +3,24 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 // Enhanced IndexedDB helper functions
 const initIndexedDB = () => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("AudioVisualizerDB", 2);
+    // Increment the version number to force schema upgrade
+    const request = indexedDB.open("AudioVisualizerDB", 3); // Increased version number
 
     request.onerror = (event) =>
       reject("IndexedDB error: " + event.target.errorCode);
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
+      
+      // Create object stores if they don't exist
       if (!db.objectStoreNames.contains("audioPositions")) {
         db.createObjectStore("audioPositions", { keyPath: "audioUrl" });
       }
       if (!db.objectStoreNames.contains("visualizerStates")) {
         db.createObjectStore("visualizerStates", { keyPath: "audioUrl" });
+      }
+      if (!db.objectStoreNames.contains("audioBuffers")) {
+        db.createObjectStore("audioBuffers", { keyPath: "audioUrl" });
       }
     };
 
@@ -42,6 +48,96 @@ const storeAudioPositions = async (audioUrl, positionData) => {
   } catch (error) {
     console.error("Error storing audio positions:", error);
     return false;
+  }
+};
+
+// Add a new function to store decoded audio buffer in IndexedDB
+const storeAudioBuffer = async (audioUrl, audioBuffer) => {
+  try {
+    console.log(`Attempting to store audio buffer for: ${audioUrl}`);
+    const db = await initIndexedDB();
+    
+    // Convert AudioBuffer to storable format
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const channelData = audioBuffer.getChannelData(0);
+    
+    const storableBuffer = {
+      audioUrl,
+      channels: audioBuffer.numberOfChannels,
+      sampleRate: audioBuffer.sampleRate,
+      length: audioBuffer.length,
+      duration: audioBuffer.duration,
+      channelData: channelData.buffer, // Store as ArrayBuffer
+      timestamp: Date.now()
+    };
+
+    const transaction = db.transaction(["audioBuffers"], "readwrite");
+    const store = transaction.objectStore("audioBuffers");
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(storableBuffer);
+
+      request.onsuccess = () => {
+        console.log(`Successfully stored audio buffer for: ${audioUrl}`);
+        resolve(true);
+      };
+
+      request.onerror = (event) => {
+        console.error(`Failed to store audio buffer for: ${audioUrl}`, event);
+        reject(false);
+      }
+    });
+  } catch (error) {
+    console.error("Error storing audio buffer:", error);
+    return false;
+  }
+};
+
+const getStoredAudioBuffer = async (audioUrl) => {
+  try {
+    console.log(`Attempting to retrieve audio buffer for: ${audioUrl}`);
+    const db = await initIndexedDB();
+    
+    const transaction = db.transaction(["audioBuffers"], "readonly");
+    const store = transaction.objectStore("audioBuffers");
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(audioUrl);
+
+      request.onsuccess = (event) => {
+        const result = event.target.result;
+        
+        if (result) {
+          // Reconstruct AudioBuffer
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const reconstructedBuffer = audioContext.createBuffer(
+            result.channels, 
+            result.length, 
+            result.sampleRate
+          );
+
+          // Restore channel data
+          for (let channel = 0; channel < result.channels; channel++) {
+            reconstructedBuffer.getChannelData(channel).set(
+              new Float32Array(result.channelData)
+            );
+          }
+
+          console.log(`Retrieved audio buffer for ${audioUrl}`);
+          resolve({ buffer: reconstructedBuffer });
+        } else {
+          resolve(null);
+        }
+      };
+
+      request.onerror = (event) => {
+        console.error(`Error retrieving audio buffer for: ${audioUrl}`, event);
+        reject(null);
+      };
+    });
+  } catch (error) {
+    console.error("Error retrieving audio buffer:", error);
+    return null;
   }
 };
 
@@ -121,15 +217,30 @@ const WaveformVisualizer = ({
 
     const loadAudioAndPositions = async () => {
       try {
-        // First check if we have cached visualizer state
-        const cachedState = await getVisualizerState(audioUrl);
+        // First check if we have cached visualizer state and audio buffer
+        const [cachedState, cachedBuffer] = await Promise.all([
+          getVisualizerState(audioUrl),
+          getStoredAudioBuffer(audioUrl),
+        ]);
 
-        // Initialize audio context and decode the audio file
+        // Initialize audio context
         const audioContext = new (window.AudioContext ||
           window.webkitAudioContext)();
-        const response = await fetch(audioUrl);
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = await audioContext.decodeAudioData(arrayBuffer);
+
+        let buffer;
+        if (cachedBuffer) {
+          // Use cached buffer if available
+          buffer = cachedBuffer.buffer;
+          console.log("Using cached audio buffer");
+        } else {
+          // Fetch and decode audio file if no cached buffer
+          const response = await fetch(audioUrl);
+          const arrayBuffer = await response.arrayBuffer();
+          buffer = await audioContext.decodeAudioData(arrayBuffer);
+
+          // Store the decoded buffer for future use
+          await storeAudioBuffer(audioUrl, buffer);
+        }
 
         setAudioBuffer(buffer);
         setDuration(buffer.duration);
@@ -143,9 +254,7 @@ const WaveformVisualizer = ({
           if (cachedState.waveformOffset !== undefined) {
             setWaveformOffset(cachedState.waveformOffset);
           }
-          if (cachedState.followPlayhead !== undefined) {
-            setFollowPlayhead(cachedState.followPlayhead);
-          }
+          // Removed followPlayhead restoration as we discussed earlier
 
           // Restore start point if different
           if (
@@ -167,29 +276,55 @@ const WaveformVisualizer = ({
     loadAudioAndPositions();
   }, [audioUrl, onStartPointChange, musicStartPoint]);
 
-  // Save visualizer state when key properties change
-  useEffect(() => {
+  // Add this function just before the return statement
+  const saveCurrentSessionState = async () => {
     if (!audioUrl || !audioBuffer) return;
 
-    // Debounce saving to avoid excessive writes
-    const saveTimer = setTimeout(() => {
-      storeVisualizerState(audioUrl, {
-        zoomLevel,
-        waveformOffset,
-        followPlayhead,
-        startPoint: musicStartPoint,
-      }).catch((err) => console.error("Error saving to IndexedDB:", err));
-    }, 1000);
+    try {
+      await Promise.all([
+        storeVisualizerState(audioUrl, {
+          zoomLevel,
+          waveformOffset,
+          startPoint: musicStartPoint,
+        }),
+        storeAudioBuffer(audioUrl, audioBuffer),
+        storeAudioPositions(audioUrl, {
+          startPoint: musicStartPoint,
+        }),
+      ]);
 
-    return () => clearTimeout(saveTimer);
-  }, [
-    zoomLevel,
-    waveformOffset,
-    followPlayhead,
-    musicStartPoint,
-    audioUrl,
-    audioBuffer,
-  ]);
+      console.log("Session state saved successfully");
+    } catch (error) {
+      console.error("Failed to save session state:", error);
+    }
+  };
+
+  // Save visualizer state when key properties change
+  useEffect(() => {
+    // Only save if there's meaningful data to save
+    if (!audioUrl || !audioBuffer) return;
+
+    // Create a debounced auto-save function
+    const autoSaveTimer = setTimeout(() => {
+      // Save current state to IndexedDB
+      Promise.all([
+        storeVisualizerState(audioUrl, {
+          zoomLevel,
+          waveformOffset,
+          startPoint: musicStartPoint,
+        }),
+        storeAudioBuffer(audioUrl, audioBuffer),
+        storeAudioPositions(audioUrl, {
+          startPoint: musicStartPoint,
+        }),
+      ]).catch((err) => {
+        console.error("Auto-save failed:", err);
+      });
+    }, 5000); // Save every 5 seconds
+
+    // Cleanup function
+    return () => clearTimeout(autoSaveTimer);
+  }, [audioUrl, audioBuffer, zoomLevel, waveformOffset, musicStartPoint]);
 
   // Enhanced time update handler with improved follow playhead logic
   useEffect(() => {
@@ -523,38 +658,49 @@ const WaveformVisualizer = ({
     // Prevent default behavior
     e.preventDefault();
     e.stopPropagation();
-  
+
     if (!audioBuffer || !canvasRef.current || isDragging) return;
-  
+
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    
+
     // Get coordinates for both mouse and touch events
-    const clientX = e.type.includes('touch') 
-      ? (e.touches ? e.touches[0].clientX : e.changedTouches[0].clientX)
+    const clientX = e.type.includes("touch")
+      ? e.touches
+        ? e.touches[0].clientX
+        : e.changedTouches[0].clientX
       : e.clientX;
-    
+
     const clickX = clientX - rect.left;
-  
+
     // Calculate click time based on total duration, not just visible duration
     const clickRatio = clickX / canvas.width;
     const preciseTime = Math.max(0, Math.min(duration, duration * clickRatio));
-  
+
+    // Trigger auto-save after user interaction
+    if (audioUrl) {
+      storeVisualizerState(audioUrl, {
+        zoomLevel,
+        waveformOffset,
+        startPoint: musicStartPoint,
+      }).catch((err) => console.error("Save on click failed:", err));
+    }
+
     // Update audio position
     if (audioRef?.current) {
       audioRef.current.currentTime = preciseTime;
     }
-  
+
     // Update playback position immediately
     setCurrentPlaybackTime(preciseTime);
-  
+
     console.log({
       eventType: e.type,
       clickX,
       canvasWidth: canvas.width,
       totalDuration: duration,
       clickRatio,
-      clickTime: preciseTime
+      clickTime: preciseTime,
     });
   };
 
@@ -715,34 +861,39 @@ const WaveformVisualizer = ({
   // Frame forward/backward navigation with improved precision
   const adjustStartPointByMs = (milliseconds) => {
     if (!audioBuffer || !onStartPointChange) return;
-    
+
     // Convert ms to seconds (1ms = 0.001s)
     const timeChange = milliseconds * 0.001;
-    
+
     // Calculate new start point time with millisecond precision
-    const newTime = Math.max(0, Math.min(duration, musicStartPoint + timeChange));
-    
+    const newTime = Math.max(
+      0,
+      Math.min(duration, musicStartPoint + timeChange)
+    );
+
     // Round to millisecond precision
     const preciseTime = Math.round(newTime * 1000) / 1000;
-    
+
     // Update start point
     onStartPointChange(preciseTime);
-    
+
     // If zoomed in, make sure adjusted position is visible
     if (zoomLevel > 1) {
       const visibleDuration = duration / zoomLevel;
       const startTime = waveformOffset;
       const endTime = startTime + visibleDuration;
-      
+
       // If new position is outside visible area, adjust the view
       if (newTime < startTime || newTime > endTime) {
-        const newOffset = Math.max(0, Math.min(duration - visibleDuration, 
-                                            newTime - (visibleDuration / 2)));
+        const newOffset = Math.max(
+          0,
+          Math.min(duration - visibleDuration, newTime - visibleDuration / 2)
+        );
         setWaveformOffset(newOffset);
       }
     }
   };
-  
+
   // Direct time input with improved validation
   const handleDirectTimeInput = () => {
     const timeStr = prompt(
@@ -808,65 +959,68 @@ const WaveformVisualizer = ({
         <div className="waveform-loading">Loading waveform...</div>
       ) : (
         <>
-<div
-  className="waveform-canvas-container"
-  style={{
-    position: "relative",
-    cursor: isDragging ? "grabbing" : "grab",
-  }}
-  onWheel={handleScroll}
-  onMouseDown={handleMouseDown}
-  onMouseMove={handleMouseMove}
-  onMouseUp={handleMouseUp}
-  onMouseLeave={handleMouseUp}
-  onClick={handleWaveformClick}
-  onTouchStart={(e) => {
-    if (!audioBuffer) return;
-    e.preventDefault(); // Prevent default touch behavior
-    const touch = e.touches[0];
-    setIsDragging(true);
-    setDragStartX(touch.clientX);
-    e.currentTarget.style.cursor = "grabbing";
-  }}
-  onTouchMove={(e) => {
-    if (!isDragging || !audioBuffer) return;
-    e.preventDefault(); // Prevent scrolling while dragging
+          <div
+            className="waveform-canvas-container"
+            style={{
+              position: "relative",
+              cursor: isDragging ? "grabbing" : "grab",
+            }}
+            onWheel={handleScroll}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onClick={handleWaveformClick}
+            onTouchStart={(e) => {
+              if (!audioBuffer) return;
+              e.preventDefault(); // Prevent default touch behavior
+              const touch = e.touches[0];
+              setIsDragging(true);
+              setDragStartX(touch.clientX);
+              e.currentTarget.style.cursor = "grabbing";
+            }}
+            onTouchMove={(e) => {
+              if (!isDragging || !audioBuffer) return;
+              e.preventDefault(); // Prevent scrolling while dragging
 
-    const touch = e.touches[0];
-    const dx = touch.clientX - dragStartX;
-    const visibleDuration = duration / zoomLevel;
-    const pixelsPerSecond = canvasWidth / visibleDuration;
+              const touch = e.touches[0];
+              const dx = touch.clientX - dragStartX;
+              const visibleDuration = duration / zoomLevel;
+              const pixelsPerSecond = canvasWidth / visibleDuration;
 
-    // Convert pixel drag to time
-    const timeChange = dx / pixelsPerSecond;
+              // Convert pixel drag to time
+              const timeChange = dx / pixelsPerSecond;
 
-    // Update offset
-    const maxOffset = Math.max(0, duration - visibleDuration);
-    setWaveformOffset((prev) => {
-      const newOffset = Math.max(0, Math.min(maxOffset, prev - timeChange));
-      return newOffset;
-    });
+              // Update offset
+              const maxOffset = Math.max(0, duration - visibleDuration);
+              setWaveformOffset((prev) => {
+                const newOffset = Math.max(
+                  0,
+                  Math.min(maxOffset, prev - timeChange)
+                );
+                return newOffset;
+              });
 
-    setDragStartX(touch.clientX);
-  }}
-  onTouchEnd={(e) => {
-    if (!isDragging) {
-      handleWaveformClick(e);
-    }
-    setIsDragging(false);
-    e.currentTarget.style.cursor = "grab";
-  }}
-  onTouchCancel={(e) => {
-    setIsDragging(false);
-    e.currentTarget.style.cursor = "grab";
-  }}
->
-  <canvas
-    ref={canvasRef}
-    width={800}
-    height={80}
-    className="waveform-canvas"
-  />
+              setDragStartX(touch.clientX);
+            }}
+            onTouchEnd={(e) => {
+              if (!isDragging) {
+                handleWaveformClick(e);
+              }
+              setIsDragging(false);
+              e.currentTarget.style.cursor = "grab";
+            }}
+            onTouchCancel={(e) => {
+              setIsDragging(false);
+              e.currentTarget.style.cursor = "grab";
+            }}
+          >
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={80}
+              className="waveform-canvas"
+            />
 
             {/* Focus on start point button */}
             <button
@@ -1036,72 +1190,72 @@ const WaveformVisualizer = ({
             </div>*/}
           </div>
 
-          <div 
-  className="navigation-controls"
-  style={{
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '8px',
-    padding: '10px 0'
-  }}
->
-  {/* Millisecond navigation buttons for start point adjustment */}
-  <button
-    onClick={() => adjustStartPointByMs(-5)}
-    style={{
-      background: '#DAA520',
-      border: 'none',
-      borderRadius: '4px',
-      padding: '6px 12px',
-      color: 'white',
-      cursor: 'pointer'
-    }}
-  >
-    -5 ms (Start)
-  </button>
-  
-  <button
-    onClick={() => adjustStartPointByMs(-1)}
-    style={{
-      background: '#DAA520',
-      border: 'none',
-      borderRadius: '4px',
-      padding: '6px 12px',
-      color: 'white',
-      cursor: 'pointer'
-    }}
-  >
-    -1 ms (Start)
-  </button>
-  
-  <button
-    onClick={() => adjustStartPointByMs(1)}
-    style={{
-      background: '#DAA520',
-      border: 'none',
-      borderRadius: '4px',
-      padding: '6px 12px',
-      color: 'white',
-      cursor: 'pointer'
-    }}
-  >
-    +1 ms (Start)
-  </button>
-  
-  <button
-    onClick={() => adjustStartPointByMs(5)}
-    style={{
-      background: '#DAA520',
-      border: 'none',
-      borderRadius: '4px',
-      padding: '6px 12px',
-      color: 'white',
-      cursor: 'pointer'
-    }}
-  >
-    +5 ms (Start)
-  </button>
-</div>
+          <div
+            className="navigation-controls"
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: "8px",
+              padding: "10px 0",
+            }}
+          >
+            {/* Millisecond navigation buttons for start point adjustment */}
+            <button
+              onClick={() => adjustStartPointByMs(-5)}
+              style={{
+                background: "#DAA520",
+                border: "none",
+                borderRadius: "4px",
+                padding: "6px 12px",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              -5 ms (Start)
+            </button>
+
+            <button
+              onClick={() => adjustStartPointByMs(-1)}
+              style={{
+                background: "#DAA520",
+                border: "none",
+                borderRadius: "4px",
+                padding: "6px 12px",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              -1 ms (Start)
+            </button>
+
+            <button
+              onClick={() => adjustStartPointByMs(1)}
+              style={{
+                background: "#DAA520",
+                border: "none",
+                borderRadius: "4px",
+                padding: "6px 12px",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              +1 ms (Start)
+            </button>
+
+            <button
+              onClick={() => adjustStartPointByMs(5)}
+              style={{
+                background: "#DAA520",
+                border: "none",
+                borderRadius: "4px",
+                padding: "6px 12px",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              +5 ms (Start)
+            </button>
+          </div>
 
           {/* Set start point button */}
           <button
