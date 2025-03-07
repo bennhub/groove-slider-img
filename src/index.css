@@ -1906,7 +1906,7 @@ img {
 .loop-toggle input[type="checkbox"]:focus {
   box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
 }
-/*wave form */
+
 /* Waveform Visualizer Styles - Instagram Style */
 .waveform-container {
   width: 100%;
