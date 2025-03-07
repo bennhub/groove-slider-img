@@ -563,77 +563,75 @@ const MusicPanel = ({
 
   return (
     <div className="music-panel">
-      <div className="music-controls">
-        {/* Music upload section with BPM detection */}
-        <div className="music-upload">
-          <label className="upload-button">
-            <Music className="icon" />
-            <span>Upload Music</span>
-            <input
-              type="file"
-              accept="audio/*"
-              onChange={async (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  const url = URL.createObjectURL(file);
-                  setFileName(file.name);
-                  
-                  // Start BPM detection
-                  setIsAnalyzing(true);
-                  try {
-                    const detectedBPM = await detectBPM(url);
-                    console.log(`Final detected BPM: ${detectedBPM}`);
-                    onBPMChange(detectedBPM);
-                  } catch (err) {
-                    console.error("BPM detection failed:", err);
-                    // Fall back to default BPM
-                    onBPMChange(120);
-                  } finally {
-                    setIsAnalyzing(false);
-                  }
-                  
-                  // Set the music URL
-                  onUpload(url);
-                  
-                  // Reset start point to beginning
-                  onStartPointChange(0);
-                  
-                  // Reset audio state
-                  if (controlsRef.current) {
-                    controlsRef.current.src = url;
-                    controlsRef.current.currentTime = 0;
-                  }
-                }
-              }}
-              className="hidden-input"
-            />
+    <div className="music-controls">
+      {/* BPM control section with integrated upload button */}
+      <div className="bpm-control">
+        {isAnalyzing && (
+          <div className="bpm-analyzer">
+            <Loader className="spinner" size={18} />
+            <span>Analyzing beat...</span>
+          </div>
+        )}
+        
+        <div className="manual-bpm">
+          <label>
+            <span>AUTO-BPM</span>
+            <span>DETECTION:</span>
           </label>
+          <input
+            type="number"
+            min="60"
+            max="180"
+            value={currentBPM}
+            onChange={(e) => onBPMChange(parseInt(e.target.value))}
+            className="bpm-input"
+          />
         </div>
         
-        {/* BPM control section */}
-        <div className="bpm-control">
-          <TapTempo onBPMChange={onBPMChange} isAnalyzing={isAnalyzing} />
-          {isAnalyzing && (
-            <div className="bpm-analyzer">
-              <Loader className="spinner" size={18} />
-              <span>Analyzing beat...</span>
-            </div>
-          )}
-          <div className="manual-bpm">
-            <label>
-              <span>AUTO-BPM</span>
-              <span>DETECTION:</span>
-            </label>
-            <input
-              type="number"
-              min="60"
-              max="180"
-              value={currentBPM}
-              onChange={(e) => onBPMChange(parseInt(e.target.value))}
-              className="bpm-input"
-            />
-          </div>
-        </div>
+        {/* Music upload button now inside the bpm-control div */}
+        <label className="upload-button">
+          <Music className="icon" />
+          <span>Upload Music</span>
+          <input
+            type="file"
+            accept="audio/*"
+            onChange={async (e) => {
+              const file = e.target.files[0];
+              if (file) {
+                const url = URL.createObjectURL(file);
+                setFileName(file.name);
+                
+                // Start BPM detection
+                setIsAnalyzing(true);
+                try {
+                  const detectedBPM = await detectBPM(url);
+                  console.log(`Final detected BPM: ${detectedBPM}`);
+                  onBPMChange(detectedBPM);
+                } catch (err) {
+                  console.error("BPM detection failed:", err);
+                  // Fall back to default BPM
+                  onBPMChange(120);
+                } finally {
+                  setIsAnalyzing(false);
+                }
+                
+                // Set the music URL
+                onUpload(url);
+                
+                // Reset start point to beginning
+                onStartPointChange(0);
+                
+                // Reset audio state
+                if (controlsRef.current) {
+                  controlsRef.current.src = url;
+                  controlsRef.current.currentTime = 0;
+                }
+              }
+            }}
+            className="hidden-input"
+          />
+        </label>
+      </div>
         
         <div className="music-player">
           <audio
@@ -675,23 +673,9 @@ const MusicPanel = ({
             />
           )}
           
-          {/* Current time display with millisecond precision */}
-          <div className="current-time-indicator">
-            {formatTime(currentTime)}
-          </div>
-          
           {/* Enhanced audio progress with millisecond precision */}
           <div className="audio-progress">
-            <div className="time-display">
-              <span 
-                onClick={handleDirectTimeInput} 
-                style={{ cursor: 'pointer' }}
-                title="Click to enter exact time"
-              >
-                {formatTime(currentTime)}
-              </span>
-              <span>{formatTime(duration)}</span>
-            </div>
+            
             <input
               type="range"
               min="0"
@@ -725,102 +709,6 @@ const MusicPanel = ({
                 // Add a custom style for smoother appearance
                 background: `linear-gradient(to right, #4682B4 ${(currentTime / duration) * 100}%, #e5e5e5 ${(currentTime / duration) * 100}%)`
               }}
-            />
-          </div>
-          
-          <label className="direct-time-input" >
-          <span>Start Point Fine-Tuning</span>
-          </label>
-         
-          
-          {/* Fine-tuning controls for millisecond adjustments */}
-          <div className="fine-tune-controls">
-            <div className="btn-group-negative">
-              <button 
-                onClick={() => adjustTimeByAmount(-0.001)}
-                className="fine-tune-button"
-                title="Back 1 millisecond"
-              >
-                -1ms
-              </button>
-              <button 
-                onClick={() => adjustTimeByAmount(-0.01)}
-                className="fine-tune-button"
-                title="Back 10 milliseconds"
-              >
-                -10ms
-              </button>
-              <button 
-                onClick={() => adjustTimeByAmount(-0.1)}
-                className="fine-tune-button"
-                title="Back 100 milliseconds"
-              >
-                -100ms
-              </button>
-            </div>
-            
-            <div className="btn-group-positive">
-              <button 
-                onClick={() => adjustTimeByAmount(0.001)}
-                className="fine-tune-button"
-                title="Forward 1 millisecond"
-              >
-                +1ms
-              </button>
-              <button 
-                onClick={() => adjustTimeByAmount(0.01)}
-                className="fine-tune-button"
-                title="Forward 10 milliseconds"
-              >
-                +10ms
-              </button>
-              <button 
-                onClick={() => adjustTimeByAmount(0.1)}
-                className="fine-tune-button"
-                title="Forward 100 milliseconds"
-              >
-                +100ms
-              </button>
-            </div>
-          </div>
-          
-          {/* Frame-by-frame navigation (useful for precise beat alignment) */}
-          <div className="frame-navigation">
-            <button 
-              onClick={() => adjustTimeByAmount(-0.033)} // ~1 frame at 30fps
-              className="frame-button"
-              title="Previous frame (1/30 second)"
-            >
-              <ChevronLeft size={16} />
-              Frame
-            </button>
-            <button 
-              onClick={() => adjustTimeByAmount(0.033)} // ~1 frame at 30fps
-              className="frame-button"
-              title="Next frame (1/30 second)"
-            >
-              Frame
-              <ChevronRight size={16} />
-            </button>
-          </div>
-          
-          {/* Volume control */}
-          <div className="volume-control">
-            <Volume size={20} />
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={volume}
-              onChange={(e) => {
-                const vol = parseFloat(e.target.value);
-                if (controlsRef.current) {
-                  controlsRef.current.volume = vol;
-                }
-                setVolume(vol);
-              }}
-              className="volume-slider"
             />
           </div>
         </div>
@@ -1501,7 +1389,7 @@ const EditPanel = ({ stories, onClose, onReorder, onDelete }) => {
   return (
     <div className="edit-panel">
       <div className="edit-panel-header">
-        <h3>Re-order (tap, drap, drop)</h3>
+        <h3>Re-order by Tap, Drag, Drop</h3>
         <button className="edit-panel-close" onClick={onClose}>
           <X size={20} />
         </button>
