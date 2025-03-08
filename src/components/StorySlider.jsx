@@ -263,7 +263,6 @@ const MusicPanel = ({
   const controlsRef = useRef(null);
   const [fileName, setFileName] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isDraggingTime, setIsDraggingTime] = useState(false);
   const [audioContext, setAudioContext] = useState(null);
   const timeUpdateRef = useRef(null);
   
@@ -539,27 +538,6 @@ const MusicPanel = ({
       }
     }
   };
-  
-  // Enhanced slider interaction
-  const handleSliderMouseDown = () => {
-    setIsDraggingTime(true);
-    
-    // Pause playback during dragging for more precise control
-    if (isPlaying && controlsRef.current) {
-      controlsRef.current.pause();
-    }
-  };
-  
-  const handleSliderMouseUp = () => {
-    setIsDraggingTime(false);
-    
-    // Resume playback if it was playing before
-    if (isPlaying && controlsRef.current) {
-      // Update intended time before playing
-      intendedTimeRef.current = controlsRef.current.currentTime;
-      controlsRef.current.play().catch(err => console.error("Resume error:", err));
-    }
-  };
 
   return (
     <div className="music-panel">
@@ -674,45 +652,6 @@ const MusicPanel = ({
               musicStartPoint={musicStartPoint}
             />
           )}
-          
-          {/* Enhanced audio progress with millisecond precision */}
-          <div className="audio-progress">
-            
-            <input
-              type="range"
-              min="0"
-              max={duration || 100}
-              step="0.001" // Millisecond precision (1/1000 of a second)
-              value={currentTime}
-              onMouseDown={handleSliderMouseDown}
-              onMouseUp={handleSliderMouseUp}
-              onTouchStart={handleSliderMouseDown}
-              onTouchEnd={handleSliderMouseUp}
-              onChange={(e) => {
-                const time = parseFloat(e.target.value);
-                if (controlsRef.current) {
-                  // Set the time on the audio element
-                  controlsRef.current.currentTime = time;
-                  
-                  // Update our reference point
-                  intendedTimeRef.current = time;
-                  
-                  // When dragging, update the start point in real-time
-                  if (isDraggingTime) {
-                    onStartPointChange(time);
-                  }
-                  
-                  // Force immediate UI update
-                  setCurrentTime(time);
-                }
-              }}
-              className="progress-slider"
-              style={{
-                // Add a custom style for smoother appearance
-                background: `linear-gradient(to right,rgb(205, 100, 36) ${(currentTime / duration) * 100}%,rgb(32, 32, 32) ${(currentTime / duration) * 100}%)`
-              }}
-            />
-          </div>
         </div>
       </div>
     </div>

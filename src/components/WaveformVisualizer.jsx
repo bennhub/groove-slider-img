@@ -205,7 +205,8 @@ const WaveformVisualizer = ({
   const [zoomLevel, setZoomLevel] = useState(16);
   const [waveformOffset, setWaveformOffset] = useState(0);
   const [followPlayhead, setFollowPlayhead] = useState(false);
-
+  const [sliderDragging, setSliderDragging] = useState(false);
+  
   // Refs for tracking
   const loadedAudioUrlRef = useRef(null);
   const animationFrameRef = useRef(null);
@@ -550,23 +551,26 @@ const WaveformVisualizer = ({
     ctx.fillStyle = "#777";
     ctx.font = "10px Arial";
 
-    // Draw playhead position with improved accuracy
-    if (currentPlaybackTime >= startTime && currentPlaybackTime <= endTime) {
-      const playheadX =
-        ((currentPlaybackTime - startTime) / visibleDuration) * width;
+// Draw playhead position with improved accuracy
+if (currentPlaybackTime >= startTime && currentPlaybackTime <= endTime) {
+  // When slider is being dragged, force the playhead to match the slider position
+  const playheadX = ((currentPlaybackTime - startTime) / visibleDuration) * width;
 
-      // Draw playhead line
-      ctx.fillStyle = "rgb(255, 132, 0)";
-      ctx.fillRect(playheadX - 1, 0, 5, height);
+  // Draw playhead line with widened appearance for better visibility
+  ctx.fillStyle = "rgb(255, 132, 0)";
+  
+  // Use a larger line width when dragging for better visibility
+  const lineWidth = sliderDragging ? 7 : 5;
+  ctx.fillRect(playheadX - Math.floor(lineWidth/2), 0, lineWidth, height);
 
-      // Add playhead marker at top for better visibility
-      ctx.beginPath();
-      ctx.moveTo(playheadX, 0);
-      ctx.lineTo(playheadX - 4, -4);
-      ctx.lineTo(playheadX + 4, -4);
-      ctx.closePath();
-      ctx.fill();
-    }
+  // Add playhead marker at top
+  ctx.beginPath();
+  ctx.moveTo(playheadX, 0);
+  ctx.lineTo(playheadX - 4, -4);
+  ctx.lineTo(playheadX + 4, -4);
+  ctx.closePath();
+  ctx.fill();
+}
 
     // Draw start point marker
     if (musicStartPoint >= startTime && musicStartPoint <= endTime) {
@@ -626,26 +630,55 @@ const WaveformVisualizer = ({
     // Prevent default behavior
     e.preventDefault();
     e.stopPropagation();
-
+  
     if (!audioBuffer || !canvasRef.current || isDragging) return;
-
+  
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-
+  
     // Get coordinates for both mouse and touch events
     const clientX = e.type.includes("touch")
       ? e.touches
         ? e.touches[0].clientX
         : e.changedTouches[0].clientX
       : e.clientX;
-
+  
+    // Calculate the exact pixel position relative to the canvas
     const clickX = clientX - rect.left;
-
-    // Calculate click time based on total duration, not just visible duration
+    
+    // Get current visible time range based on zoom level and offset
+    const visibleDuration = duration / zoomLevel;
+    const startTime = waveformOffset;
+    
+    // Calculate precise time based on the click position within the visible window
     const clickRatio = clickX / canvas.width;
-    const preciseTime = Math.max(0, Math.min(duration, duration * clickRatio));
-
-    // Trigger auto-save after user interaction
+    const preciseTime = startTime + (clickRatio * visibleDuration);
+    
+    // Apply millisecond precision and ensure within bounds
+    const roundedTime = Math.round(preciseTime * 1000) / 1000;
+    const boundedTime = Math.max(0, Math.min(duration, roundedTime));
+  
+    // Update audio position
+    if (audioRef?.current) {
+      audioRef.current.currentTime = boundedTime;
+    }
+  
+    // Update playback position state immediately
+    setCurrentPlaybackTime(boundedTime);
+  
+    // Debug logging to verify accuracy
+    console.log({
+      zoomLevel,
+      canvasWidth: canvas.width,
+      clickPosition: clickX,
+      clickRatio,
+      visibleStart: startTime.toFixed(3),
+      visibleDuration: visibleDuration.toFixed(3),
+      calculatedTime: preciseTime.toFixed(3),
+      finalTime: boundedTime.toFixed(3)
+    });
+    
+    // Optional - save state
     if (audioUrl) {
       storeVisualizerState(audioUrl, {
         zoomLevel,
@@ -653,25 +686,7 @@ const WaveformVisualizer = ({
         startPoint: musicStartPoint,
       }).catch((err) => console.error("Save on click failed:", err));
     }
-
-    // Update audio position
-    if (audioRef?.current) {
-      audioRef.current.currentTime = preciseTime;
-    }
-
-    // Update playback position immediately
-    setCurrentPlaybackTime(preciseTime);
-
-    console.log({
-      eventType: e.type,
-      clickX,
-      canvasWidth: canvas.width,
-      totalDuration: duration,
-      clickRatio,
-      clickTime: preciseTime,
-    });
   };
-
   // Zoom controls with improved behavior
   const handleZoomIn = () => {
     setZoomLevel((prev) => {
@@ -1194,96 +1209,95 @@ const WaveformVisualizer = ({
           </div>
 
           <div
-            className="navigation-controls"
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "8px",
-              padding: "10px 0",
-            }}
-          >
-            {/* Millisecond navigation buttons for start point adjustment */}
-            <button
-              onClick={() => adjustStartPointByMs(-5)}
-              style={{
-                background: "#DAA520",
-                border: "none",
-                borderRadius: "4px",
-                padding: "6px 12px",
-                color: "black",
-                cursor: "pointer",
-                fontSize: "16px",
-                WebkitUserSelect: "none", // Safari
-                MozUserSelect: "none", // Firefox
-                msUserSelect: "none", // IE/Edge
-                userSelect: "none", // Standard syntax
-                WebkitTouchCallout: "none", // iOS Safari
-              }}
-            >
-              -5 ms
-            </button>
+  className="navigation-controls"
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    gap: "8px",
+    padding: "10px 0",
+  }}
+>
+  {/* Millisecond navigation buttons with larger increments */}
+  <button
+    onClick={() => adjustStartPointByMs(-20)}
+    style={{
+      background: "#DAA520",
+      border: "none",
+      borderRadius: "4px",
+      padding: "6px 12px",
+      color: "black",
+      cursor: "pointer",
+      fontSize: "16px",
+      WebkitUserSelect: "none",
+      MozUserSelect: "none",
+      msUserSelect: "none",
+      userSelect: "none",
+      WebkitTouchCallout: "none"
+    }}
+  >
+    -20 ms 
+  </button>
 
-            <button
-              onClick={() => adjustStartPointByMs(-1)}
-              style={{
-                background: "#DAA520",
-                border: "none",
-                borderRadius: "4px",
-                padding: "6px 12px",
-                color: "black",
-                cursor: "pointer",
-                fontSize: "16px",
-                WebkitUserSelect: "none", // Safari
-                MozUserSelect: "none", // Firefox
-                msUserSelect: "none", // IE/Edge
-                userSelect: "none", // Standard syntax
-                WebkitTouchCallout: "none", // iOS Safari
-              }}
-            >
-              -1 ms
-            </button>
+  <button
+    onClick={() => adjustStartPointByMs(-5)}
+    style={{
+      background: "#DAA520",
+      border: "none",
+      borderRadius: "4px",
+      padding: "6px 12px",
+      color: "black",
+      cursor: "pointer",
+      fontSize: "16px",
+      WebkitUserSelect: "none",
+      MozUserSelect: "none",
+      msUserSelect: "none",
+      userSelect: "none",
+      WebkitTouchCallout: "none"
+    }}
+  >
+    -5 ms
+  </button>
 
-            <button
-              onClick={() => adjustStartPointByMs(1)}
-              style={{
-                background: "#DAA520",
-                border: "none",
-                borderRadius: "4px",
-                padding: "6px 12px",
-                color: "black",
-                cursor: "pointer",
-                fontSize: "16px",
-                WebkitUserSelect: "none", // Safari
-                MozUserSelect: "none", // Firefox
-                msUserSelect: "none", // IE/Edge
-                userSelect: "none", // Standard syntax
-                WebkitTouchCallout: "none", // iOS Safari
-              }}
-            >
-              +1 ms
-            </button>
+  <button
+    onClick={() => adjustStartPointByMs(5)}
+    style={{
+      background: "#DAA520",
+      border: "none",
+      borderRadius: "4px",
+      padding: "6px 12px",
+      color: "black",
+      cursor: "pointer",
+      fontSize: "16px",
+      WebkitUserSelect: "none",
+      MozUserSelect: "none",
+      msUserSelect: "none",
+      userSelect: "none",
+      WebkitTouchCallout: "none"
+    }}
+  >
+    +5 ms 
+  </button>
 
-            <button
-              onClick={() => adjustStartPointByMs(5)}
-              style={{
-                background: "#DAA520",
-                border: "none",
-                borderRadius: "4px",
-                padding: "6px 12px",
-                color: "black",
-                cursor: "pointer",
-                fontSize: "16px",
-                WebkitUserSelect: "none", // Safari
-                MozUserSelect: "none", // Firefox
-                msUserSelect: "none", // IE/Edge
-                userSelect: "none", // Standard syntax
-                WebkitTouchCallout: "none", // iOS Safari
-              }}
-            >
-              +5 ms
-            </button>
-          </div>
-
+  <button
+    onClick={() => adjustStartPointByMs(20)}
+    style={{
+      background: "#DAA520",
+      border: "none",
+      borderRadius: "4px",
+      padding: "6px 12px",
+      color: "black",
+      cursor: "pointer",
+      fontSize: "16px",
+      WebkitUserSelect: "none",
+      MozUserSelect: "none",
+      msUserSelect: "none",
+      userSelect: "none",
+      WebkitTouchCallout: "none"
+    }}
+  >
+    +20 ms 
+  </button>
+</div>
           {/* Set start point button */}
           <button
             className="set-start-point-button"
@@ -1308,6 +1322,77 @@ const WaveformVisualizer = ({
           >
             Set Start Point
           </button>
+
+{/* Add progress slider below the Set Start Point button - only active when fully zoomed out */}
+<div 
+  className="audio-progress"
+  style={{
+    margin: "15px 0 5px 0",
+    width: "100%",
+    opacity: zoomLevel === 1 ? "1" : "0.5" // Reduce opacity when zoomed in
+  }}
+>
+  <input
+    type="range"
+    min="0"
+    max={duration || 100}
+    step="0.01"
+    value={currentPlaybackTime}
+    disabled={zoomLevel !== 1} // Disable when zoomed in
+    onMouseDown={() => {
+      // Only do this when enabled (fully zoomed out)
+      if (zoomLevel === 1) {
+        // Pause playback if currently playing
+        if (audioRef?.current && !audioRef.current.paused) {
+          audioRef.current.pause();
+        }
+      }
+    }}
+    onMouseUp={() => {
+      // Only do this when enabled (fully zoomed out)
+      if (zoomLevel === 1) {
+        // Resume playback if it was playing before
+        if (audioRef?.current && isPlayingRef.current) {
+          audioRef.current.play().catch(err => console.error("Resume error:", err));
+        }
+      }
+    }}
+    onChange={(e) => {
+      // Only do this when enabled (fully zoomed out)
+      if (zoomLevel === 1) {
+        const time = parseFloat(e.target.value);
+        
+        // Update audio position
+        if (audioRef?.current) {
+          audioRef.current.currentTime = time;
+        }
+        
+        // Update playback position immediately
+        setCurrentPlaybackTime(time);
+      }
+    }}
+    className="progress-slider"
+    style={{
+      width: "100%",
+      height: "10px",
+      borderRadius: "5px",
+      outline: "none",
+      background: `linear-gradient(to right, rgb(255, 132, 0) ${(currentPlaybackTime / duration) * 100}%, rgb(32, 32, 32) ${(currentPlaybackTime / duration) * 100}%)`,
+      cursor: zoomLevel === 1 ? "pointer" : "not-allowed"
+    }}
+  />
+  {zoomLevel !== 1 && (
+    <div style={{ 
+      textAlign: "center", 
+      fontSize: "12px", 
+      color: "#AAA", 
+      marginTop: "5px" 
+    }}>
+      Zoom out fully to use the progress slider
+    </div>
+  )}
+</div>
+
         </>
       )}
     </div>
