@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
+import { Plus, Minus } from 'lucide-react';
 
 // Enhanced IndexedDB helper functions
 const initIndexedDB = () => {
@@ -1071,28 +1072,19 @@ const WaveformVisualizer = ({
             }}
           >
             <span
-              className="current-time"
-              style={{
-                color: "white",
-                background: "rgba(255, 0, 0, 0.2)",
-                borderRadius: "3px",
-                padding: "2px 5px",
-                cursor: "pointer",
-              }}
-              onClick={handleDirectTimeInput}
-              title="Click to enter exact time"
-            >
-              {formatTime(currentPlaybackTime)}
-            </span>
-
-            <span
               className="start-point"
               style={{
                 color: "white",
-                background: "rgba(255, 215, 0, 0.2)",
+                fontSize: "14px",
+                border: "solid 2px orange",
                 borderRadius: "3px",
                 padding: "2px 5px",
                 cursor: "pointer",
+                WebkitUserSelect: "none",  // Safari
+                MozUserSelect: "none",     // Firefox
+                msUserSelect: "none",      // IE/Edge
+                userSelect: "none",        // Standard syntax
+                WebkitTouchCallout: "none" // iOS Safari
               }}
               onClick={focusOnStartPoint}
               title="Click to focus on start point"
@@ -1104,9 +1096,15 @@ const WaveformVisualizer = ({
               className="duration"
               style={{
                 color: "white",
-                background: "rgba(100, 100, 100, 0.2)",
+                fontSize: "14px",
+                border: "solid 2px white",
                 borderRadius: "3px",
                 padding: "2px 5px",
+                WebkitUserSelect: "none",  // Safari
+                MozUserSelect: "none",     // Firefox
+                msUserSelect: "none",      // IE/Edge
+                userSelect: "none",        // Standard syntax
+                WebkitTouchCallout: "none" // iOS Safari
               }}
             >
               Total: {formatTime(duration)}
@@ -1129,31 +1127,43 @@ const WaveformVisualizer = ({
                 onClick={handleZoomOut}
                 disabled={zoomLevel <= 1}
                 style={{
-                  background: zoomLevel <= 1 ? "#555" : "#333",
+                  background: zoomLevel >= 64 ? "#555" : "#222",
                   color: "white",
-                  border: "none",
+                  border: "solid 2px white",
                   borderRadius: "3px",
                   padding: "3px 8px",
-                  fontSize: "12px",
-                  cursor: zoomLevel <= 1 ? "not-allowed" : "pointer",
+                  fontSize: "16px",
+                  fontFamily: "Arial, sans-serif",
+                  cursor: zoomLevel >= 64 ? "not-allowed" : "pointer",
+                  WebkitUserSelect: "none",  // Safari
+                  MozUserSelect: "none",     // Firefox
+                  msUserSelect: "none",      // IE/Edge
+                  userSelect: "none",        // Standard syntax
+                  WebkitTouchCallout: "none" // iOS Safari
                 }}
               >
-                Zoom Out
+                <Minus />
               </button>
               <button
                 onClick={handleZoomIn}
                 disabled={zoomLevel >= 64}
                 style={{
-                  background: zoomLevel >= 64 ? "#555" : "#333",
+                  background: zoomLevel >= 64 ? "#555" : "#222",
                   color: "white",
-                  border: "none",
+                  border: "solid 2px white",
                   borderRadius: "3px",
                   padding: "3px 8px",
-                  fontSize: "12px",
+                  fontSize: "16px",
+                  fontFamily: "Arial, sans-serif",
                   cursor: zoomLevel >= 64 ? "not-allowed" : "pointer",
+                  WebkitUserSelect: "none",  // Safari
+                  MozUserSelect: "none",     // Firefox
+                  msUserSelect: "none",      // IE/Edge
+                  userSelect: "none",        // Standard syntax
+                  WebkitTouchCallout: "none" // iOS Safari
                 }}
               >
-                Zoom In
+               <Plus />
               </button>
             </div>
 
@@ -1207,11 +1217,17 @@ const WaveformVisualizer = ({
                 border: "none",
                 borderRadius: "4px",
                 padding: "6px 12px",
-                color: "white",
+                color: "black",
                 cursor: "pointer",
+                fontSize: "16px",
+                WebkitUserSelect: "none",  // Safari
+                MozUserSelect: "none",     // Firefox
+                msUserSelect: "none",      // IE/Edge
+                userSelect: "none",        // Standard syntax
+                WebkitTouchCallout: "none" // iOS Safari
               }}
             >
-              -5 ms (Start)
+              -5 ms 
             </button>
 
             <button
@@ -1221,11 +1237,17 @@ const WaveformVisualizer = ({
                 border: "none",
                 borderRadius: "4px",
                 padding: "6px 12px",
-                color: "white",
+                color: "black",
                 cursor: "pointer",
+                fontSize: "16px",
+                WebkitUserSelect: "none",  // Safari
+                MozUserSelect: "none",     // Firefox
+                msUserSelect: "none",      // IE/Edge
+                userSelect: "none",        // Standard syntax
+                WebkitTouchCallout: "none" // iOS Safari
               }}
             >
-              -1 ms (Start)
+              -1 ms
             </button>
 
             <button
@@ -1235,11 +1257,17 @@ const WaveformVisualizer = ({
                 border: "none",
                 borderRadius: "4px",
                 padding: "6px 12px",
-                color: "white",
+                color: "black",
                 cursor: "pointer",
+                fontSize: "16px",
+                WebkitUserSelect: "none",  // Safari
+                MozUserSelect: "none",     // Firefox
+                msUserSelect: "none",      // IE/Edge
+                userSelect: "none",        // Standard syntax
+                WebkitTouchCallout: "none" // iOS Safari
               }}
             >
-              +1 ms (Start)
+              +1 ms 
             </button>
 
             <button
@@ -1249,11 +1277,17 @@ const WaveformVisualizer = ({
                 border: "none",
                 borderRadius: "4px",
                 padding: "6px 12px",
-                color: "white",
+                color: "black",
                 cursor: "pointer",
+                fontSize: "16px",
+                WebkitUserSelect: "none",  // Safari
+                MozUserSelect: "none",     // Firefox
+                msUserSelect: "none",      // IE/Edge
+                userSelect: "none",        // Standard syntax
+                WebkitTouchCallout: "none" // iOS Safari
               }}
             >
-              +5 ms (Start)
+              +5 ms 
             </button>
           </div>
 
@@ -1268,9 +1302,15 @@ const WaveformVisualizer = ({
               padding: "10px",
               margin: "5px 0",
               color: "#333",
+              fontSeize: "16px",
               fontWeight: "bold",
               cursor: "pointer",
               width: "100%",
+              WebkitUserSelect: "none",  // Safari
+              MozUserSelect: "none",     // Firefox
+              msUserSelect: "none",      // IE/Edge
+              userSelect: "none",        // Standard syntax
+              WebkitTouchCallout: "none" // iOS Safari
             }}
           >
             Set Start Point
