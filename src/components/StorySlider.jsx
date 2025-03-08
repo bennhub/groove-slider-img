@@ -1783,22 +1783,75 @@ const StorySlider = () => {
   useEffect(() => {
     loadFFmpeg().catch(console.error);
   }, []);
+
   // Handle file uploads
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files).filter((file) =>
-      file.type.startsWith("image/")
-    );
-    if (files.length === 0) {
-      alert("Please select image files only.");
-      return;
-    }
-    const newStories = files.map((file) => ({
+const handleFileUpload = async (event) => {
+  const files = Array.from(event.target.files).filter((file) =>
+    file.type.startsWith("image/")
+  );
+  
+  if (files.length === 0) {
+    alert("Please select image files only.");
+    return;
+  }
+  
+  // Process files one by one with base64 data
+  const newStories = await Promise.all(files.map(async (file) => {
+    // Read file as base64 data
+    const base64Data = await readFileAsBase64(file);
+    
+    return {
       type: "image",
       url: URL.createObjectURL(file),
-    }));
-    setStories((prevStories) => [...prevStories, ...newStories]);
-    event.target.value = "";
-  };
+      originalName: file.name,
+      base64Data: base64Data,
+      dateAdded: new Date().toISOString() // Add timestamp for tracking
+    };
+  }));
+  
+  // Update state with new stories
+  const updatedStories = [...stories, ...newStories];
+  setStories(updatedStories);
+  
+  // Clear the file input
+  event.target.value = "";
+  
+  // Silent auto-save after adding images
+  if (newStories.length > 0) {
+    try {
+      // Call your existing save function but with silent flag and make the name clearly an auto-save
+      await handleSaveSessionToDb("auto_save_" + Date.now(), true);
+      
+      console.log(`Auto-save completed with ${updatedStories.length} total images`);
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+    }
+  }
+};
+
+// Helper to read file as base64
+const readFileAsBase64 = (file) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+};
+
+// Helper to convert base64 to blob
+const base64ToBlob = (base64Data) => {
+  const parts = base64Data.split(';base64,');
+  const contentType = parts[0].split(':')[1];
+  const raw = window.atob(parts[1]);
+  const rawLength = raw.length;
+  const uInt8Array = new Uint8Array(rawLength);
+  
+  for (let i = 0; i < rawLength; ++i) {
+    uInt8Array[i] = raw.charCodeAt(i);
+  }
+  
+  return new Blob([uInt8Array], { type: contentType });
+};
   // Music handlers
   const handleMusicUpload = (url) => {
     setMusicUrl(url);
@@ -2098,11 +2151,29 @@ const StorySlider = () => {
               loop + 1
             }/${loopCount})`
           );
+          
+          // Get image data from base64 if available, or fall back to URL
+          let imageData;
+          try {
+            if (story.base64Data) {
+              // Use base64 data if available
+              const imageBlob = base64ToBlob(story.base64Data);
+              imageData = new Uint8Array(await imageBlob.arrayBuffer());
+            } else {
+              // Fall back to URL if needed
+              imageData = await fetchFile(story.url);
+            }
+          } catch (imageError) {
+            console.error(`Error fetching image ${i+1}:`, imageError);
+            throw new Error(`Failed to process image ${i+1}. Please check if all images are valid.`);
+          }
+          
           const inputName = `input_${loop}_${i}.png`;
           const outputName = `processed_${loop}_${i}.mp4`;
-          await ffmpeg.writeFile(inputName, await fetchFile(story.url));
+          
+          await ffmpeg.writeFile(inputName, imageData);
           tempFiles.push(inputName);
-          // Later in your code:
+          
           await ffmpeg.exec([
             "-loop",
             "1",
@@ -2152,11 +2223,30 @@ const StorySlider = () => {
         "temp_output.mp4",
       ]);
       tempFiles.push("temp_output.mp4");
-      // Add Background Music (existing logic remains the same)
+      
+      // Add Background Music with improved error handling
       if (musicUrl) {
         setProgressMessage("Adding background music...");
         try {
-          await ffmpeg.writeFile("background.mp3", await fetchFile(musicUrl));
+          // Try to get music data and validate it
+          let musicData;
+          try {
+            musicData = await fetchFile(musicUrl);
+            console.log("Music data fetched, size:", musicData.byteLength);
+            
+            // Basic validation - ensure we have actual data
+            if (!musicData || musicData.byteLength < 1000) {
+              throw new Error("Music file appears to be invalid or too small");
+            }
+          } catch (fetchError) {
+            console.error("Music fetch error:", fetchError);
+            throw new Error("Could not access music file");
+          }
+          
+          // Write music file to FFmpeg
+          await ffmpeg.writeFile("background.mp3", musicData);
+          
+          // Process video with audio
           await ffmpeg.exec([
             "-i",
             "temp_output.mp4",
@@ -2177,10 +2267,19 @@ const StorySlider = () => {
             "192k",
             "final_output.mp4",
           ]);
-          await ffmpeg.deleteFile("background.mp3");
-          await ffmpeg.deleteFile("temp_output.mp4");
-        } catch (error) {
-          console.error("Music error:", error);
+          
+          // Clean up temporary music file
+          try {
+            await ffmpeg.deleteFile("background.mp3");
+            await ffmpeg.deleteFile("temp_output.mp4");
+          } catch (cleanupError) {
+            console.warn("Non-critical cleanup error:", cleanupError);
+            // Continue with export even if cleanup fails
+          }
+        } catch (musicError) {
+          console.error("Music processing failed:", musicError);
+          // Fallback: export without music
+          setProgressMessage("Music processing failed, creating video without audio...");
           await ffmpeg.exec([
             "-i",
             "temp_output.mp4",
@@ -2190,6 +2289,7 @@ const StorySlider = () => {
           ]);
         }
       } else {
+        // No music specified, just copy the video
         await ffmpeg.exec([
           "-i",
           "temp_output.mp4",
@@ -2198,32 +2298,78 @@ const StorySlider = () => {
           "final_output.mp4",
         ]);
       }
+      
+      // Prepare final output
       setProgressMessage("Preparing download...");
       setSaveProgress(95);
-      // Read and save final file (existing logic remains the same)
-      const data = await ffmpeg.readFile("final_output.mp4");
-      setSaveProgress(100);
-      const writable = await fileHandle.createWritable();
-      await writable.write(new Blob([data.buffer], { type: "video/mp4" }));
-      await writable.close();
-      setShowProgress(false);
-      setIsExporting(false);
-      setShowShareNotification(true);
+      
+      try {
+        // Read the final file
+        const data = await ffmpeg.readFile("final_output.mp4");
+        setSaveProgress(100);
+        
+        // Write to target file
+        const writable = await fileHandle.createWritable();
+        await writable.write(new Blob([data.buffer], { type: "video/mp4" }));
+        await writable.close();
+        
+        // Clean up
+        setShowProgress(false);
+        setIsExporting(false);
+        setShowShareNotification(true);
+        
+        // Clean up temporary files
+        try {
+          for (const tempFile of tempFiles) {
+            await ffmpeg.deleteFile(tempFile);
+          }
+          await ffmpeg.deleteFile("final_output.mp4");
+        } catch (cleanupError) {
+          console.warn("Final cleanup error (non-critical):", cleanupError);
+        }
+      } catch (finalError) {
+        console.error("Final output error:", finalError);
+        throw new Error(`Failed to save video: ${finalError.message}`);
+      }
     } catch (error) {
       console.error("Export error:", error);
       setShowProgress(false);
       setIsExporting(false);
       alert(`Export failed: ${error.message}`);
+      
+      // Try to clean up any temp files in case of error
+      try {
+        for (const tempFile of tempFiles || []) {
+          await ffmpeg.deleteFile(tempFile).catch(() => {});
+        }
+      } catch (e) {
+        // Ignore cleanup errors on fail
+      }
     }
   };
   // Handle Save Sessions
   // Add this new function with a different name
-  const handleSaveSessionToDb = async (sessionName) => {
+  const handleSaveSessionToDb = async (sessionName, isSilent = false) => {
     try {
-      // Show saving indicator
-      setShowProgress(true);
-      setProgressMessage("Saving session...");
-      setSaveProgress(10);
+      // Log the data being saved
+      console.log("Saving session to IndexedDB:", {
+        sessionName,
+        storiesCount: stories.length,
+        hasBase64Data: stories.map(story => !!story.base64Data),
+        firstImagePreview: stories.length > 0 ? 
+          (stories[0].base64Data ? 
+            stories[0].base64Data.substring(0, 50) + '...' : 
+            'Missing base64 data') : 
+          'No images'
+      });
+      
+      // Only show saving indicator if not silent
+      if (!isSilent) {
+        setShowProgress(true);
+        setProgressMessage("Saving session...");
+        setSaveProgress(10);
+      }
+      
       // Prepare session data
       const sessionData = {
         name: sessionName,
@@ -2236,23 +2382,46 @@ const StorySlider = () => {
         isLoopingEnabled,
         currentIndex,
       };
-      // Progress indicator updates
-      setSaveProgress(40);
+      
+      // Progress indicator updates if not silent
+      if (!isSilent) {
+        setSaveProgress(40);
+      }
+      
       // Save session to IndexedDB
       await saveSession(sessionData);
-      // Update progress
-      setSaveProgress(100);
-      setProgressMessage("Session saved successfully!");
-      // Hide progress after a brief moment
-      setTimeout(() => {
-        setShowProgress(false);
-        // Show success message
-        alert("Session saved successfully!");
-      }, 1000);
+      
+      // Log success
+      console.log(`Session "${sessionName}" saved successfully!`, {
+        timestamp: new Date().toISOString(),
+        imageCount: stories.length
+      });
+      
+      // Update progress if not silent
+      if (!isSilent) {
+        setSaveProgress(100);
+        setProgressMessage("Session saved successfully!");
+        
+        // Hide progress after a brief moment
+        setTimeout(() => {
+          setShowProgress(false);
+          // Show success message
+          if (!sessionName.startsWith("auto_save_")) {
+            alert("Session saved successfully!");
+          }
+        }, 1000);
+      }
     } catch (error) {
-      console.error("Error saving session to database:", error);
-      setShowProgress(false);
-      alert(`Failed to save session: ${error.message}`);
+      console.error("Error saving session to database:", error, {
+        sessionName,
+        storiesCount: stories.length
+      });
+      
+      // Only show errors for non-silent operations
+      if (!isSilent) {
+        setShowProgress(false);
+        alert(`Failed to save session: ${error.message}`);
+      }
     }
   };
   // Render logic
@@ -2317,37 +2486,56 @@ const StorySlider = () => {
                           )}
                         </button>
                         {stories[currentIndex] && stories[currentIndex].url ? (
-                          <img
-                            src={stories[currentIndex].url}
-                            alt={`Slide ${currentIndex + 1}`}
-                            className="media-content"
-                            style={{
-                              objectFit: imageFitMode,
-                              width: "100%",
-                              height: "100%",
-                              display: "block",
-                            }}
-                            loading="eager"
-                          />
-                        ) : (
-                          <div
-                            className="empty-image-placeholder"
-                            style={{
-                              backgroundColor: "#f5f5f5",
-                              width: "100%",
-                              height: "100%",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              color: "#333",
-                            }}
-                          >
-                            Select an image to display
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+  <img
+    src={stories[currentIndex].url}
+    alt={`Slide ${currentIndex + 1}`}
+    className="media-content"
+    style={{
+      objectFit: imageFitMode,
+      width: "100%",
+      height: "100%",
+      display: "block",
+    }}
+    loading="eager"
+    onError={(e) => {
+      console.log("Image failed to load, attempting recovery");
+      // If URL fails, try to recover from base64
+      const currentStory = stories[currentIndex];
+      if (currentStory && currentStory.base64Data) {
+        const blob = base64ToBlob(currentStory.base64Data);
+        const newUrl = URL.createObjectURL(blob);
+        
+        // Update the URL in the stories array
+        const updatedStories = [...stories];
+        updatedStories[currentIndex] = {
+          ...currentStory,
+          url: newUrl
+        };
+        
+        setStories(updatedStories);
+        e.target.src = newUrl;
+      }
+    }}
+  />
+) : (
+  <div
+    className="empty-image-placeholder"
+    style={{
+      backgroundColor: "#f5f5f5",
+      width: "100%",
+      height: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#333",
+    }}
+  >
+    Select an image to display
+  </div>
+)}
+</div>
+</div>
+</div>
                   <NavigationButtons
                     onPrevious={handlePrevious}
                     onNext={handleNext}

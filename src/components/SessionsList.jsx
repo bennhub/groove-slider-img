@@ -26,9 +26,15 @@ const SessionsList = ({ onLoadSession, visible }) => {
     try {
       setLoading(true);
       const allSessions = await getAllSessions();
+      
+      // Filter out auto-save sessions
+      const userSessions = allSessions.filter(session => 
+        !session.name.startsWith("auto_save_")
+      );
+      
       // Sort sessions by creation date (newest first)
-      allSessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setSessions(allSessions);
+      userSessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setSessions(userSessions);
       setError(null);
     } catch (err) {
       console.error('Error loading sessions:', err);
