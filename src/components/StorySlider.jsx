@@ -145,7 +145,7 @@ const GrooveGalleryLanding = ({
               i
             </span>
           </button>
-          <h1 className="app-title">Groove Slider v1.0</h1>
+          <h1 className="app-title">Groove Slider v1.1</h1>
           {/* Always visible close button */}
           <button className="close-landing-button" onClick={onClose}>
             <X size={24} />
@@ -594,7 +594,7 @@ const MusicPanel = ({
           <span>Upload Music</span>
           <input
             type="file"
-            accept="audio/*"
+            accept=".mp3,.aac,.m4a,.wav,.mp4,.mov"
             onChange={async (e) => {
               const file = e.target.files[0];
               if (file) {
