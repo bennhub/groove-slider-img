@@ -594,7 +594,7 @@ const MusicPanel = ({
           <span>Upload Music</span>
           <input
             type="file"
-            accept=".mp3,.aac,.m4a,.wav,.mp4,.mov"
+            accept=".mp3,.aac,.m4a,.wav,.aiff"
             onChange={async (e) => {
               const file = e.target.files[0];
               if (file) {
@@ -642,10 +642,12 @@ const MusicPanel = ({
           />
           
           {musicUrl && (
-            <div className="music-info">
-              <span>{fileName || "Track Title"}</span>
-            </div>
-          )}
+  <div className="music-info">
+    <span>
+      {fileName && fileName.length > 35 ? `${fileName.slice(0, 35)}...` : fileName || "Track Title"}
+    </span>
+  </div>
+)}
           
           <button className="audio-control-button" onClick={handlePlayPause}>
             {isPlaying ? <Pause size={32} /> : <Play size={32} />}
@@ -707,7 +709,7 @@ const MusicPanel = ({
               className="progress-slider"
               style={{
                 // Add a custom style for smoother appearance
-                background: `linear-gradient(to right, #4682B4 ${(currentTime / duration) * 100}%, #e5e5e5 ${(currentTime / duration) * 100}%)`
+                background: `linear-gradient(to right,rgb(205, 100, 36) ${(currentTime / duration) * 100}%,rgb(32, 32, 32) ${(currentTime / duration) * 100}%)`
               }}
             />
           </div>
