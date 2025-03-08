@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus } from "lucide-react";
 
 // Enhanced IndexedDB helper functions
 const initIndexedDB = () => {
@@ -12,7 +12,7 @@ const initIndexedDB = () => {
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
-      
+
       // Create object stores if they don't exist
       if (!db.objectStoreNames.contains("audioPositions")) {
         db.createObjectStore("audioPositions", { keyPath: "audioUrl" });
@@ -57,11 +57,12 @@ const storeAudioBuffer = async (audioUrl, audioBuffer) => {
   try {
     console.log(`Attempting to store audio buffer for: ${audioUrl}`);
     const db = await initIndexedDB();
-    
+
     // Convert AudioBuffer to storable format
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
     const channelData = audioBuffer.getChannelData(0);
-    
+
     const storableBuffer = {
       audioUrl,
       channels: audioBuffer.numberOfChannels,
@@ -69,7 +70,7 @@ const storeAudioBuffer = async (audioUrl, audioBuffer) => {
       length: audioBuffer.length,
       duration: audioBuffer.duration,
       channelData: channelData.buffer, // Store as ArrayBuffer
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     const transaction = db.transaction(["audioBuffers"], "readwrite");
@@ -86,7 +87,7 @@ const storeAudioBuffer = async (audioUrl, audioBuffer) => {
       request.onerror = (event) => {
         console.error(`Failed to store audio buffer for: ${audioUrl}`, event);
         reject(false);
-      }
+      };
     });
   } catch (error) {
     console.error("Error storing audio buffer:", error);
@@ -98,7 +99,7 @@ const getStoredAudioBuffer = async (audioUrl) => {
   try {
     console.log(`Attempting to retrieve audio buffer for: ${audioUrl}`);
     const db = await initIndexedDB();
-    
+
     const transaction = db.transaction(["audioBuffers"], "readonly");
     const store = transaction.objectStore("audioBuffers");
 
@@ -107,21 +108,22 @@ const getStoredAudioBuffer = async (audioUrl) => {
 
       request.onsuccess = (event) => {
         const result = event.target.result;
-        
+
         if (result) {
           // Reconstruct AudioBuffer
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const audioContext = new (window.AudioContext ||
+            window.webkitAudioContext)();
           const reconstructedBuffer = audioContext.createBuffer(
-            result.channels, 
-            result.length, 
+            result.channels,
+            result.length,
             result.sampleRate
           );
 
           // Restore channel data
           for (let channel = 0; channel < result.channels; channel++) {
-            reconstructedBuffer.getChannelData(channel).set(
-              new Float32Array(result.channelData)
-            );
+            reconstructedBuffer
+              .getChannelData(channel)
+              .set(new Float32Array(result.channelData));
           }
 
           console.log(`Retrieved audio buffer for ${audioUrl}`);
@@ -200,7 +202,7 @@ const WaveformVisualizer = ({
   const [duration, setDuration] = useState(0);
   const [canvasWidth, setCanvasWidth] = useState(800);
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(16);
   const [waveformOffset, setWaveformOffset] = useState(0);
   const [followPlayhead, setFollowPlayhead] = useState(false);
 
@@ -470,7 +472,7 @@ const WaveformVisualizer = ({
     ctx.clearRect(0, 0, width, height);
 
     // Draw background
-    ctx.fillStyle = "#222";
+    ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, width, height);
 
     // Get audio data
@@ -496,7 +498,7 @@ const WaveformVisualizer = ({
     const totalBars = Math.floor(width / (barWidth + barGap));
     const samplesPerBar = Math.floor(visibleSamples / totalBars);
 
-    ctx.fillStyle = "#FFFFFF";
+    ctx.fillStyle = "#ffecb4";
 
     for (let i = 0; i < totalBars; i++) {
       const barPosition = i * (barWidth + barGap);
@@ -548,49 +550,14 @@ const WaveformVisualizer = ({
     ctx.fillStyle = "#777";
     ctx.font = "10px Arial";
 
-    // Determine appropriate time step based on zoom level
-    let timeStep = 1.0; // Default 1 second
-    if (zoomLevel >= 32) timeStep = 0.05; // 50ms
-    else if (zoomLevel >= 16) timeStep = 0.1; // 100ms
-    else if (zoomLevel >= 8) timeStep = 0.25; // 250ms
-    else if (zoomLevel >= 4) timeStep = 0.5; // 500ms
-    else if (zoomLevel >= 2) timeStep = 1.0; // 1 second
-
-    for (
-      let time = Math.ceil(startTime / timeStep) * timeStep;
-      time <= endTime;
-      time += timeStep
-    ) {
-      // Convert time to x position
-      const timeX = ((time - startTime) / visibleDuration) * width;
-
-      // Draw time marker line
-      ctx.fillStyle = "rgba(100, 100, 100, 0.5)";
-      ctx.fillRect(timeX, 0, 1, height);
-
-      // Draw time label (only on certain intervals to prevent overcrowding)
-      const shouldShowLabel =
-        timeStep >= 1.0 ||
-        (timeStep >= 0.5 && (time * 2) % 2 === 0) ||
-        (timeStep >= 0.25 && (time * 4) % 4 === 0) ||
-        (timeStep >= 0.1 && (time * 10) % 10 === 0) ||
-        (timeStep >= 0.05 && (time * 20) % 20 === 0);
-
-      if (shouldShowLabel) {
-        ctx.fillStyle = "#AAA";
-        ctx.textAlign = "center";
-        ctx.fillText(formatTime(time, false), timeX, height - 5);
-      }
-    }
-
     // Draw playhead position with improved accuracy
     if (currentPlaybackTime >= startTime && currentPlaybackTime <= endTime) {
       const playheadX =
         ((currentPlaybackTime - startTime) / visibleDuration) * width;
 
       // Draw playhead line
-      ctx.fillStyle = "rgba(255, 0, 0, 0.8)";
-      ctx.fillRect(playheadX - 1, 0, 2, height);
+      ctx.fillStyle = "rgb(255, 132, 0)";
+      ctx.fillRect(playheadX - 1, 0, 5, height);
 
       // Add playhead marker at top for better visibility
       ctx.beginPath();
@@ -604,8 +571,8 @@ const WaveformVisualizer = ({
     // Draw start point marker
     if (musicStartPoint >= startTime && musicStartPoint <= endTime) {
       const markerX = ((musicStartPoint - startTime) / visibleDuration) * width;
-      ctx.fillStyle = "rgba(255, 215, 0, 0.8)";
-      ctx.fillRect(markerX - 1, 0, 2, height);
+      ctx.fillStyle = "rgba(61, 255, 8, 0.8)";
+      ctx.fillRect(markerX - 1, 0, 5, height);
 
       // Triangle at top
       ctx.beginPath();
@@ -1067,10 +1034,34 @@ const WaveformVisualizer = ({
               display: "flex",
               justifyContent: "space-between",
               padding: "5px 0",
+              gap: "10px",
               fontSize: "12px",
               fontFamily: "monospace",
             }}
           >
+            <span
+              className="current-position"
+              style={{
+                color: "white",
+                fontSize: "14px",
+                border: "solid 2px white", // Red to match playhead color
+                borderRadius: "3px",
+                padding: "2px 5px",
+                WebkitUserSelect: "none",
+                MozUserSelect: "none",
+                msUserSelect: "none",
+                userSelect: "none",
+                WebkitTouchCallout: "none",
+                WebkitUserSelect: "none", // Safari
+                MozUserSelect: "none", // Firefox
+                msUserSelect: "none", // IE/Edge
+                userSelect: "none", // Standard syntax
+                WebkitTouchCallout: "none", // iOS Safari
+              }}
+            >
+              Position: {formatTime(currentPlaybackTime)}
+            </span>
+
             <span
               className="start-point"
               style={{
@@ -1080,17 +1071,19 @@ const WaveformVisualizer = ({
                 borderRadius: "3px",
                 padding: "2px 5px",
                 cursor: "pointer",
-                WebkitUserSelect: "none",  // Safari
-                MozUserSelect: "none",     // Firefox
-                msUserSelect: "none",      // IE/Edge
-                userSelect: "none",        // Standard syntax
-                WebkitTouchCallout: "none" // iOS Safari
+                WebkitUserSelect: "none", // Safari
+                MozUserSelect: "none", // Firefox
+                msUserSelect: "none", // IE/Edge
+                userSelect: "none", // Standard syntax
+                WebkitTouchCallout: "none", // iOS Safari
               }}
               onClick={focusOnStartPoint}
               title="Click to focus on start point"
             >
               Start: {formatTime(musicStartPoint)}
             </span>
+
+            {/* Add current position display */}
 
             <span
               className="duration"
@@ -1100,11 +1093,11 @@ const WaveformVisualizer = ({
                 border: "solid 2px white",
                 borderRadius: "3px",
                 padding: "2px 5px",
-                WebkitUserSelect: "none",  // Safari
-                MozUserSelect: "none",     // Firefox
-                msUserSelect: "none",      // IE/Edge
-                userSelect: "none",        // Standard syntax
-                WebkitTouchCallout: "none" // iOS Safari
+                WebkitUserSelect: "none", // Safari
+                MozUserSelect: "none", // Firefox
+                msUserSelect: "none", // IE/Edge
+                userSelect: "none", // Standard syntax
+                WebkitTouchCallout: "none", // iOS Safari
               }}
             >
               Total: {formatTime(duration)}
@@ -1135,11 +1128,11 @@ const WaveformVisualizer = ({
                   fontSize: "16px",
                   fontFamily: "Arial, sans-serif",
                   cursor: zoomLevel >= 64 ? "not-allowed" : "pointer",
-                  WebkitUserSelect: "none",  // Safari
-                  MozUserSelect: "none",     // Firefox
-                  msUserSelect: "none",      // IE/Edge
-                  userSelect: "none",        // Standard syntax
-                  WebkitTouchCallout: "none" // iOS Safari
+                  WebkitUserSelect: "none", // Safari
+                  MozUserSelect: "none", // Firefox
+                  msUserSelect: "none", // IE/Edge
+                  userSelect: "none", // Standard syntax
+                  WebkitTouchCallout: "none", // iOS Safari
                 }}
               >
                 <Minus />
@@ -1156,14 +1149,14 @@ const WaveformVisualizer = ({
                   fontSize: "16px",
                   fontFamily: "Arial, sans-serif",
                   cursor: zoomLevel >= 64 ? "not-allowed" : "pointer",
-                  WebkitUserSelect: "none",  // Safari
-                  MozUserSelect: "none",     // Firefox
-                  msUserSelect: "none",      // IE/Edge
-                  userSelect: "none",        // Standard syntax
-                  WebkitTouchCallout: "none" // iOS Safari
+                  WebkitUserSelect: "none", // Safari
+                  MozUserSelect: "none", // Firefox
+                  msUserSelect: "none", // IE/Edge
+                  userSelect: "none", // Standard syntax
+                  WebkitTouchCallout: "none", // iOS Safari
                 }}
               >
-               <Plus />
+                <Plus />
               </button>
             </div>
 
@@ -1220,14 +1213,14 @@ const WaveformVisualizer = ({
                 color: "black",
                 cursor: "pointer",
                 fontSize: "16px",
-                WebkitUserSelect: "none",  // Safari
-                MozUserSelect: "none",     // Firefox
-                msUserSelect: "none",      // IE/Edge
-                userSelect: "none",        // Standard syntax
-                WebkitTouchCallout: "none" // iOS Safari
+                WebkitUserSelect: "none", // Safari
+                MozUserSelect: "none", // Firefox
+                msUserSelect: "none", // IE/Edge
+                userSelect: "none", // Standard syntax
+                WebkitTouchCallout: "none", // iOS Safari
               }}
             >
-              -5 ms 
+              -5 ms
             </button>
 
             <button
@@ -1240,11 +1233,11 @@ const WaveformVisualizer = ({
                 color: "black",
                 cursor: "pointer",
                 fontSize: "16px",
-                WebkitUserSelect: "none",  // Safari
-                MozUserSelect: "none",     // Firefox
-                msUserSelect: "none",      // IE/Edge
-                userSelect: "none",        // Standard syntax
-                WebkitTouchCallout: "none" // iOS Safari
+                WebkitUserSelect: "none", // Safari
+                MozUserSelect: "none", // Firefox
+                msUserSelect: "none", // IE/Edge
+                userSelect: "none", // Standard syntax
+                WebkitTouchCallout: "none", // iOS Safari
               }}
             >
               -1 ms
@@ -1260,14 +1253,14 @@ const WaveformVisualizer = ({
                 color: "black",
                 cursor: "pointer",
                 fontSize: "16px",
-                WebkitUserSelect: "none",  // Safari
-                MozUserSelect: "none",     // Firefox
-                msUserSelect: "none",      // IE/Edge
-                userSelect: "none",        // Standard syntax
-                WebkitTouchCallout: "none" // iOS Safari
+                WebkitUserSelect: "none", // Safari
+                MozUserSelect: "none", // Firefox
+                msUserSelect: "none", // IE/Edge
+                userSelect: "none", // Standard syntax
+                WebkitTouchCallout: "none", // iOS Safari
               }}
             >
-              +1 ms 
+              +1 ms
             </button>
 
             <button
@@ -1280,14 +1273,14 @@ const WaveformVisualizer = ({
                 color: "black",
                 cursor: "pointer",
                 fontSize: "16px",
-                WebkitUserSelect: "none",  // Safari
-                MozUserSelect: "none",     // Firefox
-                msUserSelect: "none",      // IE/Edge
-                userSelect: "none",        // Standard syntax
-                WebkitTouchCallout: "none" // iOS Safari
+                WebkitUserSelect: "none", // Safari
+                MozUserSelect: "none", // Firefox
+                msUserSelect: "none", // IE/Edge
+                userSelect: "none", // Standard syntax
+                WebkitTouchCallout: "none", // iOS Safari
               }}
             >
-              +5 ms 
+              +5 ms
             </button>
           </div>
 
@@ -1306,11 +1299,11 @@ const WaveformVisualizer = ({
               fontWeight: "bold",
               cursor: "pointer",
               width: "100%",
-              WebkitUserSelect: "none",  // Safari
-              MozUserSelect: "none",     // Firefox
-              msUserSelect: "none",      // IE/Edge
-              userSelect: "none",        // Standard syntax
-              WebkitTouchCallout: "none" // iOS Safari
+              WebkitUserSelect: "none", // Safari
+              MozUserSelect: "none", // Firefox
+              msUserSelect: "none", // IE/Edge
+              userSelect: "none", // Standard syntax
+              WebkitTouchCallout: "none", // iOS Safari
             }}
           >
             Set Start Point
