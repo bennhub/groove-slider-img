@@ -32,6 +32,7 @@ import {
   Award,
   Expand,
   Minimize,
+  Mic,
 } from "lucide-react";
 
 //firebase
@@ -265,10 +266,11 @@ const MusicPanel = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [audioContext, setAudioContext] = useState(null);
   const timeUpdateRef = useRef(null);
-  
+
   // Reference to store the intended playback position
   const intendedTimeRef = useRef(null);
-  
+  const fileInputRef = useRef(null);
+
   // Initialize audio context on component mount
   useEffect(() => {
     // Create audio context only once
@@ -276,14 +278,14 @@ const MusicPanel = ({
       const context = new (window.AudioContext || window.webkitAudioContext)();
       setAudioContext(context);
     }
-    
+
     return () => {
       if (audioContext) {
         audioContext.close();
       }
     };
   }, []);
-  
+
   /**
    * BPM detection handler - fixed to work with updated audio handling
    */
@@ -291,36 +293,37 @@ const MusicPanel = ({
     try {
       console.log("Starting BPM detection...");
       setIsAnalyzing(true);
-      
+
       // Create a separate audio context just for BPM detection
-      const bpmAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-      
+      const bpmAudioContext = new (window.AudioContext ||
+        window.webkitAudioContext)();
+
       // Fetch the audio data
       const response = await fetch(audioUrl);
       const arrayBuffer = await response.arrayBuffer();
-      
+
       console.log("Audio data fetched, decoding...");
-      
+
       // Decode the audio data
       const audioBuffer = await bpmAudioContext.decodeAudioData(arrayBuffer);
-      
+
       console.log("Audio decoded, analyzing tempo...");
-      
+
       // Use the web-audio-beat-detector library to analyze the tempo
       const detectedTempo = await analyze(audioBuffer);
-      
+
       console.log(`Raw detected tempo: ${detectedTempo}`);
-      
+
       // Adjust for double-time if needed
       // If the detected tempo is above 140, it's likely double-time
       let adjustedTempo = detectedTempo;
       if (detectedTempo > 140) {
         adjustedTempo = detectedTempo / 2;
       }
-      
+
       const finalTempo = Math.round(adjustedTempo);
       console.log(`Final detected BPM: ${finalTempo}`);
-      
+
       return finalTempo;
     } catch (error) {
       console.error("BPM detection failed:", error);
@@ -329,30 +332,30 @@ const MusicPanel = ({
       setIsAnalyzing(false);
     }
   };
-  
+
   /**
    * Enhanced time update handler with forced synchronization
    */
   const handleTimeUpdate = () => {
     if (!controlsRef.current) return;
-    
+
     // Get the precise time from audio element
     const precise = controlsRef.current.currentTime;
-    
+
     // Update state with precise time
     setCurrentTime(precise);
-    
+
     // Check if there's a drift from the intended time when playback starts
     if (isPlaying && intendedTimeRef.current !== null) {
       const drift = Math.abs(precise - intendedTimeRef.current);
-      
+
       // If there's a significant drift (over 5ms) at the beginning of playback
       if (drift > 0.005 && precise < intendedTimeRef.current + 0.5) {
         console.log(`Correcting drift of ${drift.toFixed(6)}s`);
-        
+
         // Force audio back to intended position
         controlsRef.current.currentTime = intendedTimeRef.current;
-        
+
         // Also sync the main audio ref
         if (audioRef.current) {
           audioRef.current.currentTime = intendedTimeRef.current;
@@ -364,35 +367,35 @@ const MusicPanel = ({
       }
     }
   };
-  
+
   // Setup enhanced event listeners
   useEffect(() => {
     if (controlsRef.current && audioRef.current) {
       // Set up regular timeupdate listener
       controlsRef.current.addEventListener("timeupdate", handleTimeUpdate);
-      
+
       // Keep main audio in sync
       const syncAudioRefs = () => {
         audioRef.current.currentTime = controlsRef.current.currentTime;
       };
-      
+
       // Listen for timeupdate events
       controlsRef.current.addEventListener("timeupdate", syncAudioRefs);
-      
+
       // Listen for seeking events (high precision for fine adjustments)
       controlsRef.current.addEventListener("seeking", () => {
         // Cancel any previous timeupdate forcing
         if (timeUpdateRef.current) {
           clearInterval(timeUpdateRef.current);
         }
-        
+
         // Force timeupdate events during seeking for more responsive UI
         timeUpdateRef.current = setInterval(() => {
           // Manually trigger the time update handling
           handleTimeUpdate();
         }, 10); // Update every 10ms during seeking
       });
-      
+
       controlsRef.current.addEventListener("seeked", () => {
         // Clean up the forced timeupdate interval
         if (timeUpdateRef.current) {
@@ -400,33 +403,36 @@ const MusicPanel = ({
           timeUpdateRef.current = null;
         }
       });
-      
+
       controlsRef.current.addEventListener("loadedmetadata", () => {
         setDuration(controlsRef.current.duration);
       });
-      
+
       return () => {
         // Clean up all event listeners
         if (controlsRef.current) {
-          controlsRef.current.removeEventListener("timeupdate", handleTimeUpdate);
+          controlsRef.current.removeEventListener(
+            "timeupdate",
+            handleTimeUpdate
+          );
           controlsRef.current.removeEventListener("timeupdate", syncAudioRefs);
           controlsRef.current.removeEventListener("seeking", () => {});
           controlsRef.current.removeEventListener("seeked", () => {});
         }
-        
+
         if (timeUpdateRef.current) {
           clearInterval(timeUpdateRef.current);
         }
       };
     }
   }, [audioRef, controlsRef, isPlaying]);
-  
+
   /**
    * Fixed play/pause handler that prevents the timing jump
    */
   const handlePlayPause = async () => {
     if (!controlsRef.current) return;
-    
+
     if (isPlaying) {
       // Pause logic - this is simple
       controlsRef.current.pause();
@@ -434,30 +440,34 @@ const MusicPanel = ({
     } else {
       try {
         // Play logic - this needs to be precise
-        
+
         // 1. Store the EXACT time where we want to start
         const exactStartTime = controlsRef.current.currentTime;
         intendedTimeRef.current = exactStartTime;
-        
+
         // 2. Set the current time explicitly right before playing
         controlsRef.current.currentTime = exactStartTime;
-        
+
         // 3. Resume the AudioContext to avoid delays
-        if (audioContext && audioContext.state === 'suspended') {
+        if (audioContext && audioContext.state === "suspended") {
           await audioContext.resume();
         }
-        
+
         // 4. Start precise playback
         await controlsRef.current.play();
-        
+
         // 5. Set up a backup check that forces the correct start time
         setTimeout(() => {
-          if (Math.abs(controlsRef.current.currentTime - exactStartTime) > 0.005) {
-            console.log(`Forced correction: ${controlsRef.current.currentTime} -> ${exactStartTime}`);
+          if (
+            Math.abs(controlsRef.current.currentTime - exactStartTime) > 0.005
+          ) {
+            console.log(
+              `Forced correction: ${controlsRef.current.currentTime} -> ${exactStartTime}`
+            );
             controlsRef.current.currentTime = exactStartTime;
           }
         }, 10);
-        
+
         setIsPlaying(true);
       } catch (err) {
         console.error("Playback error:", err);
@@ -465,7 +475,7 @@ const MusicPanel = ({
       }
     }
   };
-  
+
   /**
    * Format time with millisecond precision
    */
@@ -473,31 +483,33 @@ const MusicPanel = ({
     const minutes = Math.floor(timeInSeconds / 60);
     const seconds = Math.floor(timeInSeconds % 60);
     const milliseconds = Math.floor((timeInSeconds % 1) * 1000);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(3, "0")}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}.${milliseconds
+      .toString()
+      .padStart(3, "0")}`;
   };
-  
+
   /**
    * Handle precise time adjustment
    */
   const adjustTimeByAmount = (amount) => {
     if (!controlsRef.current) return;
-    
+
     // Calculate new time with constraints
     const newTime = Math.max(0, Math.min(duration, currentTime + amount));
-    
+
     // Set the time precisely
     controlsRef.current.currentTime = newTime;
-    
+
     // Update our reference point for intended time
     intendedTimeRef.current = newTime;
-    
+
     // Update the app state
     onStartPointChange(newTime);
-    
+
     // Force immediate UI update
     setCurrentTime(newTime);
   };
-  
+
   /**
    * Handle direct time input through a modal dialog
    */
@@ -507,31 +519,33 @@ const MusicPanel = ({
     if (inputTime) {
       try {
         // Parse the time format mm:ss.ms
-        const [minutesPart, secondsPart] = inputTime.split(':');
-        const [secondsWhole, millisecondsPart] = secondsPart.split('.');
-        
+        const [minutesPart, secondsPart] = inputTime.split(":");
+        const [secondsWhole, millisecondsPart] = secondsPart.split(".");
+
         const minutes = parseInt(minutesPart, 10) || 0;
         const seconds = parseInt(secondsWhole, 10) || 0;
         const milliseconds = parseInt(millisecondsPart, 10) || 0;
-        
-        const totalSeconds = minutes * 60 + seconds + (milliseconds / 1000);
-        
+
+        const totalSeconds = minutes * 60 + seconds + milliseconds / 1000;
+
         if (totalSeconds >= 0 && totalSeconds <= duration) {
           if (controlsRef.current) {
             // Set the time precisely
             controlsRef.current.currentTime = totalSeconds;
-            
+
             // Update our reference point
             intendedTimeRef.current = totalSeconds;
-            
+
             // Update the app state
             onStartPointChange(totalSeconds);
-            
+
             // Force immediate UI update
             setCurrentTime(totalSeconds);
           }
         } else {
-          alert(`Please enter a time between 0:00.000 and ${formatTime(duration)}`);
+          alert(
+            `Please enter a time between 0:00.000 and ${formatTime(duration)}`
+          );
         }
       } catch (error) {
         alert("Invalid time format. Please use mm:ss.ms");
@@ -541,76 +555,127 @@ const MusicPanel = ({
 
   return (
     <div className="music-panel">
-    <div className="music-controls">
-      {/* BPM control section with integrated upload button */}
-      <div className="bpm-control">
-        {isAnalyzing && (
-          <div className="bpm-analyzer">
-            <Loader className="spinner" size={18} />
-            <span>Analyzing beat...</span>
+      <div className="music-controls">
+        {/* BPM control section with integrated upload button */}
+        <div className="bpm-control">
+          {isAnalyzing && (
+            <div className="bpm-analyzer">
+              <Loader className="spinner" size={18} />
+              <span>Analyzing beat...</span>
+            </div>
+          )}
+
+          <div className="manual-bpm">
+            <label>
+              <span>AUTO-BPM</span>
+              <span>DETECTION:</span>
+            </label>
+            <input
+              type="number"
+              min="60"
+              max="180"
+              value={currentBPM}
+              onChange={(e) => onBPMChange(parseInt(e.target.value))}
+              className="bpm-input"
+            />
           </div>
-        )}
-        
-        <div className="manual-bpm">
-          <label>
-            <span>AUTO-BPM</span>
-            <span>DETECTION:</span>
+
+          {/* Music upload button now inside the bpm-control div */}
+          <label className="upload-button">
+            <Music className="icon" />
+            <span>Upload Music</span>
+            <input
+              type="file"
+              accept=".mp3,.aac,.m4a,.wav,.aiff"
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const url = URL.createObjectURL(file);
+                  setFileName(file.name);
+
+                  // Start BPM detection
+                  setIsAnalyzing(true);
+                  try {
+                    const detectedBPM = await detectBPM(url);
+                    console.log(`Final detected BPM: ${detectedBPM}`);
+                    onBPMChange(detectedBPM);
+                  } catch (err) {
+                    console.error("BPM detection failed:", err);
+                    // Fall back to default BPM
+                    onBPMChange(120);
+                  } finally {
+                    setIsAnalyzing(false);
+                  }
+
+                  // Set the music URL
+                  onUpload(url);
+
+                  // Reset start point to beginning
+                  onStartPointChange(0);
+
+                  // Reset audio state
+                  if (controlsRef.current) {
+                    controlsRef.current.src = url;
+                    controlsRef.current.currentTime = 0;
+                  }
+                }
+              }}
+              className="hidden-input"
+            />
           </label>
-          <input
-            type="number"
-            min="60"
-            max="180"
-            value={currentBPM}
-            onChange={(e) => onBPMChange(parseInt(e.target.value))}
-            className="bpm-input"
-          />
+          {/* Recording button */}
+          {/* Recording button */}
+          <label className="record-button">
+            <Mic className="icon" />
+            <span>Record</span>
+            <input
+              type="file"
+              accept="audio/*"
+              capture="microphone"
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  // Additional checks for file type and size
+                  if (
+                    file.type.startsWith("audio/") &&
+                    file.size > 0 &&
+                    file.size < 50 * 1024 * 1024
+                  ) {
+                    // Max 50MB
+                    const url = URL.createObjectURL(file);
+                    setFileName(file.name);
+
+                    // BPM detection and other logic remains the same
+                    setIsAnalyzing(true);
+                    try {
+                      const detectedBPM = await detectBPM(url);
+                      console.log(`Final detected BPM: ${detectedBPM}`);
+                      onBPMChange(detectedBPM);
+                    } catch (err) {
+                      console.error("BPM detection failed:", err);
+                      onBPMChange(120);
+                    } finally {
+                      setIsAnalyzing(false);
+                    }
+
+                    onUpload(url);
+                    onStartPointChange(0);
+
+                    if (controlsRef.current) {
+                      controlsRef.current.src = url;
+                      controlsRef.current.currentTime = 0;
+                    }
+                  } else {
+                    // Handle invalid file
+                    alert("Please select a valid audio file (max 50MB)");
+                  }
+                }
+              }}
+              className="hidden-input"
+            />
+          </label>
         </div>
-        
-        {/* Music upload button now inside the bpm-control div */}
-        <label className="upload-button">
-          <Music className="icon" />
-          <span>Upload Music</span>
-          <input
-            type="file"
-            accept=".mp3,.aac,.m4a,.wav,.aiff"
-            onChange={async (e) => {
-              const file = e.target.files[0];
-              if (file) {
-                const url = URL.createObjectURL(file);
-                setFileName(file.name);
-                
-                // Start BPM detection
-                setIsAnalyzing(true);
-                try {
-                  const detectedBPM = await detectBPM(url);
-                  console.log(`Final detected BPM: ${detectedBPM}`);
-                  onBPMChange(detectedBPM);
-                } catch (err) {
-                  console.error("BPM detection failed:", err);
-                  // Fall back to default BPM
-                  onBPMChange(120);
-                } finally {
-                  setIsAnalyzing(false);
-                }
-                
-                // Set the music URL
-                onUpload(url);
-                
-                // Reset start point to beginning
-                onStartPointChange(0);
-                
-                // Reset audio state
-                if (controlsRef.current) {
-                  controlsRef.current.src = url;
-                  controlsRef.current.currentTime = 0;
-                }
-              }
-            }}
-            className="hidden-input"
-          />
-        </label>
-      </div>
-        
+
         <div className="music-player">
           <audio
             ref={controlsRef}
@@ -618,19 +683,21 @@ const MusicPanel = ({
             onTimeUpdate={handleTimeUpdate}
             preload="auto" // Ensure audio is fully loaded
           />
-          
+
           {musicUrl && (
-  <div className="music-info">
-    <span>
-      {fileName && fileName.length > 35 ? `${fileName.slice(0, 35)}...` : fileName || "Track Title"}
-    </span>
-  </div>
-)}
-          
+            <div className="music-info">
+              <span>
+                {fileName && fileName.length > 35
+                  ? `${fileName.slice(0, 35)}...`
+                  : fileName || "Track Title"}
+              </span>
+            </div>
+          )}
+
           <button className="audio-control-button" onClick={handlePlayPause}>
             {isPlaying ? <Pause size={32} /> : <Play size={32} />}
           </button>
-          
+
           {/* Waveform visualizer with millisecond precision */}
           {musicUrl && (
             <WaveformVisualizer
@@ -639,10 +706,10 @@ const MusicPanel = ({
               onStartPointChange={(time) => {
                 // Round to 3 decimal places for consistent millisecond precision
                 const preciseTime = Math.round(time * 1000) / 1000;
-                
+
                 // Update intended time reference
                 intendedTimeRef.current = preciseTime;
-                
+
                 // Update component and app state
                 onStartPointChange(preciseTime);
                 if (controlsRef.current) {
@@ -1726,73 +1793,77 @@ const StorySlider = () => {
   }, []);
 
   // Handle file uploads
-const handleFileUpload = async (event) => {
-  const files = Array.from(event.target.files).filter((file) =>
-    file.type.startsWith("image/")
-  );
-  
-  if (files.length === 0) {
-    alert("Please select image files only.");
-    return;
-  }
-  
-  // Process files one by one with base64 data
-  const newStories = await Promise.all(files.map(async (file) => {
-    // Read file as base64 data
-    const base64Data = await readFileAsBase64(file);
-    
-    return {
-      type: "image",
-      url: URL.createObjectURL(file),
-      originalName: file.name,
-      base64Data: base64Data,
-      dateAdded: new Date().toISOString() // Add timestamp for tracking
-    };
-  }));
-  
-  // Update state with new stories
-  const updatedStories = [...stories, ...newStories];
-  setStories(updatedStories);
-  
-  // Clear the file input
-  event.target.value = "";
-  
-  // Silent auto-save after adding images
-  if (newStories.length > 0) {
-    try {
-      // Call your existing save function but with silent flag and make the name clearly an auto-save
-      await handleSaveSessionToDb("auto_save_" + Date.now(), true);
-      
-      console.log(`Auto-save completed with ${updatedStories.length} total images`);
-    } catch (error) {
-      console.error("Auto-save failed:", error);
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files).filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    if (files.length === 0) {
+      alert("Please select image files only.");
+      return;
     }
-  }
-};
 
-// Helper to read file as base64
-const readFileAsBase64 = (file) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.readAsDataURL(file);
-  });
-};
+    // Process files one by one with base64 data
+    const newStories = await Promise.all(
+      files.map(async (file) => {
+        // Read file as base64 data
+        const base64Data = await readFileAsBase64(file);
 
-// Helper to convert base64 to blob
-const base64ToBlob = (base64Data) => {
-  const parts = base64Data.split(';base64,');
-  const contentType = parts[0].split(':')[1];
-  const raw = window.atob(parts[1]);
-  const rawLength = raw.length;
-  const uInt8Array = new Uint8Array(rawLength);
-  
-  for (let i = 0; i < rawLength; ++i) {
-    uInt8Array[i] = raw.charCodeAt(i);
-  }
-  
-  return new Blob([uInt8Array], { type: contentType });
-};
+        return {
+          type: "image",
+          url: URL.createObjectURL(file),
+          originalName: file.name,
+          base64Data: base64Data,
+          dateAdded: new Date().toISOString(), // Add timestamp for tracking
+        };
+      })
+    );
+
+    // Update state with new stories
+    const updatedStories = [...stories, ...newStories];
+    setStories(updatedStories);
+
+    // Clear the file input
+    event.target.value = "";
+
+    // Silent auto-save after adding images
+    if (newStories.length > 0) {
+      try {
+        // Call your existing save function but with silent flag and make the name clearly an auto-save
+        await handleSaveSessionToDb("auto_save_" + Date.now(), true);
+
+        console.log(
+          `Auto-save completed with ${updatedStories.length} total images`
+        );
+      } catch (error) {
+        console.error("Auto-save failed:", error);
+      }
+    }
+  };
+
+  // Helper to read file as base64
+  const readFileAsBase64 = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Helper to convert base64 to blob
+  const base64ToBlob = (base64Data) => {
+    const parts = base64Data.split(";base64,");
+    const contentType = parts[0].split(":")[1];
+    const raw = window.atob(parts[1]);
+    const rawLength = raw.length;
+    const uInt8Array = new Uint8Array(rawLength);
+
+    for (let i = 0; i < rawLength; ++i) {
+      uInt8Array[i] = raw.charCodeAt(i);
+    }
+
+    return new Blob([uInt8Array], { type: contentType });
+  };
   // Music handlers
   const handleMusicUpload = (url) => {
     setMusicUrl(url);
@@ -1835,7 +1906,7 @@ const base64ToBlob = (base64Data) => {
       clearInterval(intervalRef.current);
     }
   };
-  
+
   const handlePlayPause = async () => {
     if (isPlaying) {
       stopAutoRotation();
@@ -1847,24 +1918,26 @@ const base64ToBlob = (base64Data) => {
       if (currentIndex === stories.length - 1) {
         setCurrentIndex(0);
       }
-      
+
       // Start the rotation first
       startAutoRotation();
-      
+
       if (audioRef.current && musicUrl) {
         // Store exact intended time
         const exactStartTime = musicStartPoint;
-        
+
         // Set it precisely before attempting to play
         audioRef.current.currentTime = exactStartTime;
-        
+
         try {
           await audioRef.current.play();
-          
+
           // Immediately verify and correct any timing drift after playback starts
           setTimeout(() => {
-            if (Math.abs(audioRef.current.currentTime - exactStartTime) > 0.01) {
-              console.log('Correcting audio timing drift on play');
+            if (
+              Math.abs(audioRef.current.currentTime - exactStartTime) > 0.01
+            ) {
+              console.log("Correcting audio timing drift on play");
               audioRef.current.currentTime = exactStartTime;
             }
           }, 10);
@@ -1872,7 +1945,7 @@ const base64ToBlob = (base64Data) => {
           console.log("Play error:", err);
         }
       }
-      
+
       setIsPlaying(true);
     }
   };
@@ -2092,7 +2165,7 @@ const base64ToBlob = (base64Data) => {
               loop + 1
             }/${loopCount})`
           );
-          
+
           // Get image data from base64 if available, or fall back to URL
           let imageData;
           try {
@@ -2105,16 +2178,20 @@ const base64ToBlob = (base64Data) => {
               imageData = await fetchFile(story.url);
             }
           } catch (imageError) {
-            console.error(`Error fetching image ${i+1}:`, imageError);
-            throw new Error(`Failed to process image ${i+1}. Please check if all images are valid.`);
+            console.error(`Error fetching image ${i + 1}:`, imageError);
+            throw new Error(
+              `Failed to process image ${
+                i + 1
+              }. Please check if all images are valid.`
+            );
           }
-          
+
           const inputName = `input_${loop}_${i}.png`;
           const outputName = `processed_${loop}_${i}.mp4`;
-          
+
           await ffmpeg.writeFile(inputName, imageData);
           tempFiles.push(inputName);
-          
+
           await ffmpeg.exec([
             "-loop",
             "1",
@@ -2164,7 +2241,7 @@ const base64ToBlob = (base64Data) => {
         "temp_output.mp4",
       ]);
       tempFiles.push("temp_output.mp4");
-      
+
       // Add Background Music with improved error handling
       if (musicUrl) {
         setProgressMessage("Adding background music...");
@@ -2174,7 +2251,7 @@ const base64ToBlob = (base64Data) => {
           try {
             musicData = await fetchFile(musicUrl);
             console.log("Music data fetched, size:", musicData.byteLength);
-            
+
             // Basic validation - ensure we have actual data
             if (!musicData || musicData.byteLength < 1000) {
               throw new Error("Music file appears to be invalid or too small");
@@ -2183,10 +2260,10 @@ const base64ToBlob = (base64Data) => {
             console.error("Music fetch error:", fetchError);
             throw new Error("Could not access music file");
           }
-          
+
           // Write music file to FFmpeg
           await ffmpeg.writeFile("background.mp3", musicData);
-          
+
           // Process video with audio
           await ffmpeg.exec([
             "-i",
@@ -2208,7 +2285,7 @@ const base64ToBlob = (base64Data) => {
             "192k",
             "final_output.mp4",
           ]);
-          
+
           // Clean up temporary music file
           try {
             await ffmpeg.deleteFile("background.mp3");
@@ -2220,7 +2297,9 @@ const base64ToBlob = (base64Data) => {
         } catch (musicError) {
           console.error("Music processing failed:", musicError);
           // Fallback: export without music
-          setProgressMessage("Music processing failed, creating video without audio...");
+          setProgressMessage(
+            "Music processing failed, creating video without audio..."
+          );
           await ffmpeg.exec([
             "-i",
             "temp_output.mp4",
@@ -2239,26 +2318,26 @@ const base64ToBlob = (base64Data) => {
           "final_output.mp4",
         ]);
       }
-      
+
       // Prepare final output
       setProgressMessage("Preparing download...");
       setSaveProgress(95);
-      
+
       try {
         // Read the final file
         const data = await ffmpeg.readFile("final_output.mp4");
         setSaveProgress(100);
-        
+
         // Write to target file
         const writable = await fileHandle.createWritable();
         await writable.write(new Blob([data.buffer], { type: "video/mp4" }));
         await writable.close();
-        
+
         // Clean up
         setShowProgress(false);
         setIsExporting(false);
         setShowShareNotification(true);
-        
+
         // Clean up temporary files
         try {
           for (const tempFile of tempFiles) {
@@ -2277,7 +2356,7 @@ const base64ToBlob = (base64Data) => {
       setShowProgress(false);
       setIsExporting(false);
       alert(`Export failed: ${error.message}`);
-      
+
       // Try to clean up any temp files in case of error
       try {
         for (const tempFile of tempFiles || []) {
@@ -2296,21 +2375,22 @@ const base64ToBlob = (base64Data) => {
       console.log("Saving session to IndexedDB:", {
         sessionName,
         storiesCount: stories.length,
-        hasBase64Data: stories.map(story => !!story.base64Data),
-        firstImagePreview: stories.length > 0 ? 
-          (stories[0].base64Data ? 
-            stories[0].base64Data.substring(0, 50) + '...' : 
-            'Missing base64 data') : 
-          'No images'
+        hasBase64Data: stories.map((story) => !!story.base64Data),
+        firstImagePreview:
+          stories.length > 0
+            ? stories[0].base64Data
+              ? stories[0].base64Data.substring(0, 50) + "..."
+              : "Missing base64 data"
+            : "No images",
       });
-      
+
       // Only show saving indicator if not silent
       if (!isSilent) {
         setShowProgress(true);
         setProgressMessage("Saving session...");
         setSaveProgress(10);
       }
-      
+
       // Prepare session data
       const sessionData = {
         name: sessionName,
@@ -2323,26 +2403,26 @@ const base64ToBlob = (base64Data) => {
         isLoopingEnabled,
         currentIndex,
       };
-      
+
       // Progress indicator updates if not silent
       if (!isSilent) {
         setSaveProgress(40);
       }
-      
+
       // Save session to IndexedDB
       await saveSession(sessionData);
-      
+
       // Log success
       console.log(`Session "${sessionName}" saved successfully!`, {
         timestamp: new Date().toISOString(),
-        imageCount: stories.length
+        imageCount: stories.length,
       });
-      
+
       // Update progress if not silent
       if (!isSilent) {
         setSaveProgress(100);
         setProgressMessage("Session saved successfully!");
-        
+
         // Hide progress after a brief moment
         setTimeout(() => {
           setShowProgress(false);
@@ -2355,9 +2435,9 @@ const base64ToBlob = (base64Data) => {
     } catch (error) {
       console.error("Error saving session to database:", error, {
         sessionName,
-        storiesCount: stories.length
+        storiesCount: stories.length,
       });
-      
+
       // Only show errors for non-silent operations
       if (!isSilent) {
         setShowProgress(false);
@@ -2427,56 +2507,60 @@ const base64ToBlob = (base64Data) => {
                           )}
                         </button>
                         {stories[currentIndex] && stories[currentIndex].url ? (
-  <img
-    src={stories[currentIndex].url}
-    alt={`Slide ${currentIndex + 1}`}
-    className="media-content"
-    style={{
-      objectFit: imageFitMode,
-      width: "100%",
-      height: "100%",
-      display: "block",
-    }}
-    loading="eager"
-    onError={(e) => {
-      console.log("Image failed to load, attempting recovery");
-      // If URL fails, try to recover from base64
-      const currentStory = stories[currentIndex];
-      if (currentStory && currentStory.base64Data) {
-        const blob = base64ToBlob(currentStory.base64Data);
-        const newUrl = URL.createObjectURL(blob);
-        
-        // Update the URL in the stories array
-        const updatedStories = [...stories];
-        updatedStories[currentIndex] = {
-          ...currentStory,
-          url: newUrl
-        };
-        
-        setStories(updatedStories);
-        e.target.src = newUrl;
-      }
-    }}
-  />
-) : (
-  <div
-    className="empty-image-placeholder"
-    style={{
-      backgroundColor: "#f5f5f5",
-      width: "100%",
-      height: "100%",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "#333",
-    }}
-  >
-    Select an image to display
-  </div>
-)}
-</div>
-</div>
-</div>
+                          <img
+                            src={stories[currentIndex].url}
+                            alt={`Slide ${currentIndex + 1}`}
+                            className="media-content"
+                            style={{
+                              objectFit: imageFitMode,
+                              width: "100%",
+                              height: "100%",
+                              display: "block",
+                            }}
+                            loading="eager"
+                            onError={(e) => {
+                              console.log(
+                                "Image failed to load, attempting recovery"
+                              );
+                              // If URL fails, try to recover from base64
+                              const currentStory = stories[currentIndex];
+                              if (currentStory && currentStory.base64Data) {
+                                const blob = base64ToBlob(
+                                  currentStory.base64Data
+                                );
+                                const newUrl = URL.createObjectURL(blob);
+
+                                // Update the URL in the stories array
+                                const updatedStories = [...stories];
+                                updatedStories[currentIndex] = {
+                                  ...currentStory,
+                                  url: newUrl,
+                                };
+
+                                setStories(updatedStories);
+                                e.target.src = newUrl;
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="empty-image-placeholder"
+                            style={{
+                              backgroundColor: "#f5f5f5",
+                              width: "100%",
+                              height: "100%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#333",
+                            }}
+                          >
+                            Select an image to display
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                   <NavigationButtons
                     onPrevious={handlePrevious}
                     onNext={handleNext}
