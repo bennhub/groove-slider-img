@@ -1364,9 +1364,9 @@ const adjustStartPointByMs = (milliseconds) => {
   <input
     type="range"
     min="0"
-    max={duration || 100}
+    max="1" // Change to a normalized 0-1 range
     step="0.01"
-    value={currentPlaybackTime}
+    value={(currentPlaybackTime - waveformOffset) / (duration / zoomLevel)}
     onMouseDown={() => {
       // Pause playback if currently playing
       if (audioRef?.current && !audioRef.current.paused) {
@@ -1382,15 +1382,20 @@ const adjustStartPointByMs = (milliseconds) => {
       }
     }}
     onChange={(e) => {
-      const time = parseFloat(e.target.value);
+      // Normalize the slider value (0-1) to the current visible waveform area
+      const sliderValue = parseFloat(e.target.value);
+      
+      // Calculate the time within the current visible waveform
+      const visibleDuration = duration / zoomLevel;
+      const constrainedTime = waveformOffset + (sliderValue * visibleDuration);
 
       // Update audio position
       if (audioRef?.current) {
-        audioRef.current.currentTime = time;
+        audioRef.current.currentTime = constrainedTime;
       }
 
       // Update playback position immediately
-      setCurrentPlaybackTime(time);
+      setCurrentPlaybackTime(constrainedTime);
     }}
     className="progress-slider"
     style={{
@@ -1399,9 +1404,9 @@ const adjustStartPointByMs = (milliseconds) => {
       borderRadius: "5px",
       outline: "none",
       background: `linear-gradient(to right, rgb(255, 132, 0) ${
-        (currentPlaybackTime / duration) * 100
+        (currentPlaybackTime - waveformOffset) / (duration / zoomLevel) * 100
       }%, rgb(32, 32, 32) ${
-        (currentPlaybackTime / duration) * 100
+        (currentPlaybackTime - waveformOffset) / (duration / zoomLevel) * 100
       }%)`,
       cursor: "pointer",
     }}
