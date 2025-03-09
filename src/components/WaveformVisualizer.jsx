@@ -961,68 +961,79 @@ const adjustStartPointByMs = (milliseconds) => {
         <div className="waveform-loading">Loading waveform...</div>
       ) : (
         <>
-          <div
-            className="waveform-canvas-container"
-            style={{
-              position: "relative",
-              cursor: isDragging ? "grabbing" : "grab",
-            }}
-            onWheel={handleScroll}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onClick={handleWaveformClick}
-            onTouchStart={(e) => {
-              if (!audioBuffer) return;
-              e.preventDefault(); // Prevent default touch behavior
-              const touch = e.touches[0];
-              setIsDragging(true);
-              setDragStartX(touch.clientX);
-              e.currentTarget.style.cursor = "grabbing";
-            }}
-            onTouchMove={(e) => {
-              if (!isDragging || !audioBuffer) return;
-              e.preventDefault(); // Prevent scrolling while dragging
+       <div
+  className="waveform-canvas-container"
+  style={{
+    position: "relative",
+    cursor: isDragging ? "grabbing" : "grab",
+    touchAction: "pan-x", // Allow horizontal scrolling, prevent vertical scroll/zoom
+  }}
+  onWheel={handleScroll}
+  onMouseDown={handleMouseDown}
+  onMouseMove={handleMouseMove}
+  onMouseUp={handleMouseUp}
+  onMouseLeave={handleMouseUp}
+  onClick={handleWaveformClick}
+  onTouchStart={(e) => {
+    if (!audioBuffer) return;
+    
+    // Check if we're directly touching the waveform
+    const touch = e.touches[0];
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    
+    // Only enable dragging if touch is within canvas bounds
+    if (
+      touch.clientX >= canvasRect.left && 
+      touch.clientX <= canvasRect.right && 
+      touch.clientY >= canvasRect.top && 
+      touch.clientY <= canvasRect.bottom
+    ) {
+      setIsDragging(true);
+      setDragStartX(touch.clientX);
+      e.currentTarget.style.cursor = "grabbing";
+    }
+  }}
+  onTouchMove={(e) => {
+    if (!isDragging || !audioBuffer) return;
 
-              const touch = e.touches[0];
-              const dx = touch.clientX - dragStartX;
-              const visibleDuration = duration / zoomLevel;
-              const pixelsPerSecond = canvasWidth / visibleDuration;
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragStartX;
+    const visibleDuration = duration / zoomLevel;
+    const pixelsPerSecond = canvasWidth / visibleDuration;
 
-              // Convert pixel drag to time
-              const timeChange = dx / pixelsPerSecond;
+    // Convert pixel drag to time
+    const timeChange = dx / pixelsPerSecond;
 
-              // Update offset
-              const maxOffset = Math.max(0, duration - visibleDuration);
-              setWaveformOffset((prev) => {
-                const newOffset = Math.max(
-                  0,
-                  Math.min(maxOffset, prev - timeChange)
-                );
-                return newOffset;
-              });
+    // Update offset
+    const maxOffset = Math.max(0, duration - visibleDuration);
+    setWaveformOffset((prev) => {
+      const newOffset = Math.max(
+        0,
+        Math.min(maxOffset, prev - timeChange)
+      );
+      return newOffset;
+    });
 
-              setDragStartX(touch.clientX);
-            }}
-            onTouchEnd={(e) => {
-              if (!isDragging) {
-                handleWaveformClick(e);
-              }
-              setIsDragging(false);
-              e.currentTarget.style.cursor = "grab";
-            }}
-            onTouchCancel={(e) => {
-              setIsDragging(false);
-              e.currentTarget.style.cursor = "grab";
-            }}
-          >
-            <canvas
-              ref={canvasRef}
-              width={800}
-              height={80}
-              className="waveform-canvas"
-            />
+    setDragStartX(touch.clientX);
+  }}
+  onTouchEnd={(e) => {
+    if (!isDragging) {
+      handleWaveformClick(e);
+    }
+    setIsDragging(false);
+    e.currentTarget.style.cursor = "grab";
+  }}
+  onTouchCancel={(e) => {
+    setIsDragging(false);
+    e.currentTarget.style.cursor = "grab";
+  }}
+>
+        <canvas
+          ref={canvasRef}
+          width={800}
+          height={80}
+          className="waveform-canvas"
+        />
 
             {/* Focus on start point button */}
             <button
@@ -1344,81 +1355,58 @@ const adjustStartPointByMs = (milliseconds) => {
 
           {/* Add progress slider below the Set Start Point button - only active when fully zoomed out */}
           <div
-            className="audio-progress"
-            style={{
-              margin: "15px 0 5px 0",
-              width: "100%",
-              opacity: zoomLevel === 1 ? "1" : "0.5", // Reduce opacity when zoomed in
-            }}
-          >
-            <input
-              type="range"
-              min="0"
-              max={duration || 100}
-              step="0.01"
-              value={currentPlaybackTime}
-              disabled={zoomLevel !== 1} // Disable when zoomed in
-              onMouseDown={() => {
-                // Only do this when enabled (fully zoomed out)
-                if (zoomLevel === 1) {
-                  // Pause playback if currently playing
-                  if (audioRef?.current && !audioRef.current.paused) {
-                    audioRef.current.pause();
-                  }
-                }
-              }}
-              onMouseUp={() => {
-                // Only do this when enabled (fully zoomed out)
-                if (zoomLevel === 1) {
-                  // Resume playback if it was playing before
-                  if (audioRef?.current && isPlayingRef.current) {
-                    audioRef.current
-                      .play()
-                      .catch((err) => console.error("Resume error:", err));
-                  }
-                }
-              }}
-              onChange={(e) => {
-                // Only do this when enabled (fully zoomed out)
-                if (zoomLevel === 1) {
-                  const time = parseFloat(e.target.value);
+  className="audio-progress"
+  style={{
+    margin: "15px 0 5px 0",
+    width: "100%",
+  }}
+>
+  <input
+    type="range"
+    min="0"
+    max={duration || 100}
+    step="0.01"
+    value={currentPlaybackTime}
+    onMouseDown={() => {
+      // Pause playback if currently playing
+      if (audioRef?.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+      }
+    }}
+    onMouseUp={() => {
+      // Resume playback if it was playing before
+      if (audioRef?.current && isPlayingRef.current) {
+        audioRef.current
+          .play()
+          .catch((err) => console.error("Resume error:", err));
+      }
+    }}
+    onChange={(e) => {
+      const time = parseFloat(e.target.value);
 
-                  // Update audio position
-                  if (audioRef?.current) {
-                    audioRef.current.currentTime = time;
-                  }
+      // Update audio position
+      if (audioRef?.current) {
+        audioRef.current.currentTime = time;
+      }
 
-                  // Update playback position immediately
-                  setCurrentPlaybackTime(time);
-                }
-              }}
-              className="progress-slider"
-              style={{
-                width: "100%",
-                height: "10px",
-                borderRadius: "5px",
-                outline: "none",
-                background: `linear-gradient(to right, rgb(255, 132, 0) ${
-                  (currentPlaybackTime / duration) * 100
-                }%, rgb(32, 32, 32) ${
-                  (currentPlaybackTime / duration) * 100
-                }%)`,
-                cursor: zoomLevel === 1 ? "pointer" : "not-allowed",
-              }}
-            />
-            {zoomLevel !== 1 && (
-              <div
-                style={{
-                  textAlign: "center",
-                  fontSize: "12px",
-                  color: "#AAA",
-                  marginTop: "5px",
-                }}
-              >
-                Zoom out fully to use the progress slider
-              </div>
-            )}
-          </div>
+      // Update playback position immediately
+      setCurrentPlaybackTime(time);
+    }}
+    className="progress-slider"
+    style={{
+      width: "100%",
+      height: "10px",
+      borderRadius: "5px",
+      outline: "none",
+      background: `linear-gradient(to right, rgb(255, 132, 0) ${
+        (currentPlaybackTime / duration) * 100
+      }%, rgb(32, 32, 32) ${
+        (currentPlaybackTime / duration) * 100
+      }%)`,
+      cursor: "pointer",
+    }}
+  />
+</div>
         </>
       )}
     </div>
