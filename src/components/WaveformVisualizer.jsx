@@ -307,28 +307,26 @@ const WaveformVisualizer = ({
   useEffect(() => {
     // Only save if there's meaningful data to save
     if (!audioUrl || !audioBuffer) return;
-
+  
     // Create a debounced auto-save function
     const autoSaveTimer = setTimeout(() => {
-      // Save current state to IndexedDB
+      // Save current state to IndexedDB (excluding start point)
       Promise.all([
         storeVisualizerState(audioUrl, {
           zoomLevel,
           waveformOffset,
-          startPoint: musicStartPoint,
+          // Removed startPoint from here
         }),
         storeAudioBuffer(audioUrl, audioBuffer),
-        storeAudioPositions(audioUrl, {
-          startPoint: musicStartPoint,
-        }),
+        // Removed storeAudioPositions from here
       ]).catch((err) => {
         console.error("Auto-save failed:", err);
       });
     }, 5000); // Save every 5 seconds
-
+  
     // Cleanup function
     return () => clearTimeout(autoSaveTimer);
-  }, [audioUrl, audioBuffer, zoomLevel, waveformOffset, musicStartPoint]);
+  }, [audioUrl, audioBuffer, zoomLevel, waveformOffset]); 
 
   // Enhanced time update handler with improved follow playhead logic
   useEffect(() => {
@@ -631,42 +629,42 @@ const WaveformVisualizer = ({
     // Prevent default behavior
     e.preventDefault();
     e.stopPropagation();
-
+  
     if (!audioBuffer || !canvasRef.current || isDragging) return;
-
+  
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-
+  
     // Get coordinates for both mouse and touch events
     const clientX = e.type.includes("touch")
       ? e.touches
         ? e.touches[0].clientX
         : e.changedTouches[0].clientX
       : e.clientX;
-
+  
     // Calculate the exact pixel position relative to the canvas
     const clickX = clientX - rect.left;
-
+    
     // Get current visible time range based on zoom level and offset
     const visibleDuration = duration / zoomLevel;
     const startTime = waveformOffset;
-
+    
     // Calculate precise time based on the click position within the visible window
     const clickRatio = clickX / canvas.width;
-    const preciseTime = startTime + clickRatio * visibleDuration;
-
+    const preciseTime = startTime + (clickRatio * visibleDuration);
+    
     // Apply millisecond precision and ensure within bounds
     const roundedTime = Math.round(preciseTime * 1000) / 1000;
     const boundedTime = Math.max(0, Math.min(duration, roundedTime));
-
+  
     // Update audio position
     if (audioRef?.current) {
       audioRef.current.currentTime = boundedTime;
     }
-
+  
     // Update playback position state immediately
     setCurrentPlaybackTime(boundedTime);
-
+  
     // Debug logging to verify accuracy
     console.log({
       zoomLevel,
@@ -828,55 +826,75 @@ const WaveformVisualizer = ({
     e.currentTarget.style.cursor = "grab";
   };
 
-  // Set start point to current playback position
-  const handleSetStartPoint = () => {
-    if (!audioRef?.current || !onStartPointChange) return;
+// Set start point to current playback position
+const handleSetStartPoint = () => {
+  if (!audioRef?.current || !onStartPointChange || !audioUrl) return;
 
-    // Get current position with high precision
-    const startTime = audioRef.current.currentTime;
+  // Get current position with high precision
+  const startTime = audioRef.current.currentTime;
 
-    // Round to millisecond precision
-    const preciseTime = Math.round(startTime * 1000) / 1000;
+  // Round to millisecond precision
+  const preciseTime = Math.round(startTime * 1000) / 1000;
 
-    // Notify parent component
-    onStartPointChange(preciseTime);
-  };
+  // Notify parent component
+  onStartPointChange(preciseTime);
 
-  // Frame forward/backward navigation with improved precision
-  const adjustStartPointByMs = (milliseconds) => {
-    if (!audioBuffer || !onStartPointChange) return;
+  // Immediately save the start point
+  console.log(`Setting start point to ${preciseTime}`);
+  storeAudioPositions(audioUrl, {
+    startPoint: preciseTime,
+  }).then(() => {
+    console.log("Start point saved successfully");
+  }).catch(err => {
+    console.error("Failed to save start point:", err);
+  });
+};
 
-    // Convert ms to seconds (1ms = 0.001s)
-    const timeChange = milliseconds * 0.001;
+// Frame forward/backward navigation with improved precision
+const adjustStartPointByMs = (milliseconds) => {
+  if (!audioBuffer || !onStartPointChange || !audioUrl) return;
 
-    // Calculate new start point time with millisecond precision
-    const newTime = Math.max(
-      0,
-      Math.min(duration, musicStartPoint + timeChange)
-    );
+  // Convert ms to seconds (1ms = 0.001s)
+  const timeChange = milliseconds * 0.001;
 
-    // Round to millisecond precision
-    const preciseTime = Math.round(newTime * 1000) / 1000;
+  // Calculate new start point time with millisecond precision
+  const newTime = Math.max(
+    0,
+    Math.min(duration, musicStartPoint + timeChange)
+  );
 
-    // Update start point
-    onStartPointChange(preciseTime);
+  // Round to millisecond precision
+  const preciseTime = Math.round(newTime * 1000) / 1000;
 
-    // If zoomed in, make sure adjusted position is visible
-    if (zoomLevel > 1) {
-      const visibleDuration = duration / zoomLevel;
-      const startTime = waveformOffset;
-      const endTime = startTime + visibleDuration;
+  // Update start point
+  onStartPointChange(preciseTime);
+  
+  // Immediately save the adjusted start point
+  console.log(`Adjusting start point to ${preciseTime}`);
+  storeAudioPositions(audioUrl, {
+    startPoint: preciseTime,
+  }).then(() => {
+    console.log("Adjusted start point saved successfully");
+  }).catch(err => {
+    console.error("Failed to save adjusted start point:", err);
+  });
 
-      // If new position is outside visible area, adjust the view
-      if (newTime < startTime || newTime > endTime) {
-        const newOffset = Math.max(
-          0,
-          Math.min(duration - visibleDuration, newTime - visibleDuration / 2)
-        );
-        setWaveformOffset(newOffset);
-      }
+  // If zoomed in, make sure adjusted position is visible
+  if (zoomLevel > 1) {
+    const visibleDuration = duration / zoomLevel;
+    const startTime = waveformOffset;
+    const endTime = startTime + visibleDuration;
+
+    // If new position is outside visible area, adjust the view
+    if (newTime < startTime || newTime > endTime) {
+      const newOffset = Math.max(
+        0,
+        Math.min(duration - visibleDuration, newTime - visibleDuration / 2)
+      );
+      setWaveformOffset(newOffset);
     }
-  };
+  }
+};
 
   // Direct time input with improved validation
   const handleDirectTimeInput = () => {
