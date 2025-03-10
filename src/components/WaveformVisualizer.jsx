@@ -307,7 +307,7 @@ const WaveformVisualizer = ({
   useEffect(() => {
     // Only save if there's meaningful data to save
     if (!audioUrl || !audioBuffer) return;
-  
+
     // Create a debounced auto-save function
     const autoSaveTimer = setTimeout(() => {
       // Save current state to IndexedDB (excluding start point)
@@ -323,10 +323,10 @@ const WaveformVisualizer = ({
         console.error("Auto-save failed:", err);
       });
     }, 5000); // Save every 5 seconds
-  
+
     // Cleanup function
     return () => clearTimeout(autoSaveTimer);
-  }, [audioUrl, audioBuffer, zoomLevel, waveformOffset]); 
+  }, [audioUrl, audioBuffer, zoomLevel, waveformOffset]);
 
   // Enhanced time update handler with improved follow playhead logic
   useEffect(() => {
@@ -629,42 +629,42 @@ const WaveformVisualizer = ({
     // Prevent default behavior
     e.preventDefault();
     e.stopPropagation();
-  
+
     if (!audioBuffer || !canvasRef.current || isDragging) return;
-  
+
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-  
+
     // Get coordinates for both mouse and touch events
     const clientX = e.type.includes("touch")
       ? e.touches
         ? e.touches[0].clientX
         : e.changedTouches[0].clientX
       : e.clientX;
-  
+
     // Calculate the exact pixel position relative to the canvas
     const clickX = clientX - rect.left;
-    
+
     // Get current visible time range based on zoom level and offset
     const visibleDuration = duration / zoomLevel;
     const startTime = waveformOffset;
-    
+
     // Calculate precise time based on the click position within the visible window
     const clickRatio = clickX / canvas.width;
-    const preciseTime = startTime + (clickRatio * visibleDuration);
-    
+    const preciseTime = startTime + clickRatio * visibleDuration;
+
     // Apply millisecond precision and ensure within bounds
     const roundedTime = Math.round(preciseTime * 1000) / 1000;
     const boundedTime = Math.max(0, Math.min(duration, roundedTime));
-  
+
     // Update audio position
     if (audioRef?.current) {
       audioRef.current.currentTime = boundedTime;
     }
-  
+
     // Update playback position state immediately
     setCurrentPlaybackTime(boundedTime);
-  
+
     // Debug logging to verify accuracy
     console.log({
       zoomLevel,
@@ -826,75 +826,79 @@ const WaveformVisualizer = ({
     e.currentTarget.style.cursor = "grab";
   };
 
-// Set start point to current playback position
-const handleSetStartPoint = () => {
-  if (!audioRef?.current || !onStartPointChange || !audioUrl) return;
+  // Set start point to current playback position
+  const handleSetStartPoint = () => {
+    if (!audioRef?.current || !onStartPointChange || !audioUrl) return;
 
-  // Get current position with high precision
-  const startTime = audioRef.current.currentTime;
+    // Get current position with high precision
+    const startTime = audioRef.current.currentTime;
 
-  // Round to millisecond precision
-  const preciseTime = Math.round(startTime * 1000) / 1000;
+    // Round to millisecond precision
+    const preciseTime = Math.round(startTime * 1000) / 1000;
 
-  // Notify parent component
-  onStartPointChange(preciseTime);
+    // Notify parent component
+    onStartPointChange(preciseTime);
 
-  // Immediately save the start point
-  console.log(`Setting start point to ${preciseTime}`);
-  storeAudioPositions(audioUrl, {
-    startPoint: preciseTime,
-  }).then(() => {
-    console.log("Start point saved successfully");
-  }).catch(err => {
-    console.error("Failed to save start point:", err);
-  });
-};
+    // Immediately save the start point
+    console.log(`Setting start point to ${preciseTime}`);
+    storeAudioPositions(audioUrl, {
+      startPoint: preciseTime,
+    })
+      .then(() => {
+        console.log("Start point saved successfully");
+      })
+      .catch((err) => {
+        console.error("Failed to save start point:", err);
+      });
+  };
 
-// Frame forward/backward navigation with improved precision
-const adjustStartPointByMs = (milliseconds) => {
-  if (!audioBuffer || !onStartPointChange || !audioUrl) return;
+  // Frame forward/backward navigation with improved precision
+  const adjustStartPointByMs = (milliseconds) => {
+    if (!audioBuffer || !onStartPointChange || !audioUrl) return;
 
-  // Convert ms to seconds (1ms = 0.001s)
-  const timeChange = milliseconds * 0.001;
+    // Convert ms to seconds (1ms = 0.001s)
+    const timeChange = milliseconds * 0.001;
 
-  // Calculate new start point time with millisecond precision
-  const newTime = Math.max(
-    0,
-    Math.min(duration, musicStartPoint + timeChange)
-  );
+    // Calculate new start point time with millisecond precision
+    const newTime = Math.max(
+      0,
+      Math.min(duration, musicStartPoint + timeChange)
+    );
 
-  // Round to millisecond precision
-  const preciseTime = Math.round(newTime * 1000) / 1000;
+    // Round to millisecond precision
+    const preciseTime = Math.round(newTime * 1000) / 1000;
 
-  // Update start point
-  onStartPointChange(preciseTime);
-  
-  // Immediately save the adjusted start point
-  console.log(`Adjusting start point to ${preciseTime}`);
-  storeAudioPositions(audioUrl, {
-    startPoint: preciseTime,
-  }).then(() => {
-    console.log("Adjusted start point saved successfully");
-  }).catch(err => {
-    console.error("Failed to save adjusted start point:", err);
-  });
+    // Update start point
+    onStartPointChange(preciseTime);
 
-  // If zoomed in, make sure adjusted position is visible
-  if (zoomLevel > 1) {
-    const visibleDuration = duration / zoomLevel;
-    const startTime = waveformOffset;
-    const endTime = startTime + visibleDuration;
+    // Immediately save the adjusted start point
+    console.log(`Adjusting start point to ${preciseTime}`);
+    storeAudioPositions(audioUrl, {
+      startPoint: preciseTime,
+    })
+      .then(() => {
+        console.log("Adjusted start point saved successfully");
+      })
+      .catch((err) => {
+        console.error("Failed to save adjusted start point:", err);
+      });
 
-    // If new position is outside visible area, adjust the view
-    if (newTime < startTime || newTime > endTime) {
-      const newOffset = Math.max(
-        0,
-        Math.min(duration - visibleDuration, newTime - visibleDuration / 2)
-      );
-      setWaveformOffset(newOffset);
+    // If zoomed in, make sure adjusted position is visible
+    if (zoomLevel > 1) {
+      const visibleDuration = duration / zoomLevel;
+      const startTime = waveformOffset;
+      const endTime = startTime + visibleDuration;
+
+      // If new position is outside visible area, adjust the view
+      if (newTime < startTime || newTime > endTime) {
+        const newOffset = Math.max(
+          0,
+          Math.min(duration - visibleDuration, newTime - visibleDuration / 2)
+        );
+        setWaveformOffset(newOffset);
+      }
     }
-  }
-};
+  };
 
   // Direct time input with improved validation
   const handleDirectTimeInput = () => {
@@ -961,79 +965,79 @@ const adjustStartPointByMs = (milliseconds) => {
         <div className="waveform-loading">Loading waveform...</div>
       ) : (
         <>
-       <div
-  className="waveform-canvas-container"
-  style={{
-    position: "relative",
-    cursor: isDragging ? "grabbing" : "grab",
-    touchAction: "pan-x", // Allow horizontal scrolling, prevent vertical scroll/zoom
-  }}
-  onWheel={handleScroll}
-  onMouseDown={handleMouseDown}
-  onMouseMove={handleMouseMove}
-  onMouseUp={handleMouseUp}
-  onMouseLeave={handleMouseUp}
-  onClick={handleWaveformClick}
-  onTouchStart={(e) => {
-    if (!audioBuffer) return;
-    
-    // Check if we're directly touching the waveform
-    const touch = e.touches[0];
-    const canvasRect = canvasRef.current.getBoundingClientRect();
-    
-    // Only enable dragging if touch is within canvas bounds
-    if (
-      touch.clientX >= canvasRect.left && 
-      touch.clientX <= canvasRect.right && 
-      touch.clientY >= canvasRect.top && 
-      touch.clientY <= canvasRect.bottom
-    ) {
-      setIsDragging(true);
-      setDragStartX(touch.clientX);
-      e.currentTarget.style.cursor = "grabbing";
-    }
-  }}
-  onTouchMove={(e) => {
-    if (!isDragging || !audioBuffer) return;
+          <div
+            className="waveform-canvas-container"
+            style={{
+              position: "relative",
+              cursor: isDragging ? "grabbing" : "grab",
+              touchAction: "pan-x", // Allow horizontal scrolling, prevent vertical scroll/zoom
+            }}
+            onWheel={handleScroll}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onClick={handleWaveformClick}
+            onTouchStart={(e) => {
+              if (!audioBuffer) return;
 
-    const touch = e.touches[0];
-    const dx = touch.clientX - dragStartX;
-    const visibleDuration = duration / zoomLevel;
-    const pixelsPerSecond = canvasWidth / visibleDuration;
+              // Check if we're directly touching the waveform
+              const touch = e.touches[0];
+              const canvasRect = canvasRef.current.getBoundingClientRect();
 
-    // Convert pixel drag to time
-    const timeChange = dx / pixelsPerSecond;
+              // Only enable dragging if touch is within canvas bounds
+              if (
+                touch.clientX >= canvasRect.left &&
+                touch.clientX <= canvasRect.right &&
+                touch.clientY >= canvasRect.top &&
+                touch.clientY <= canvasRect.bottom
+              ) {
+                setIsDragging(true);
+                setDragStartX(touch.clientX);
+                e.currentTarget.style.cursor = "grabbing";
+              }
+            }}
+            onTouchMove={(e) => {
+              if (!isDragging || !audioBuffer) return;
 
-    // Update offset
-    const maxOffset = Math.max(0, duration - visibleDuration);
-    setWaveformOffset((prev) => {
-      const newOffset = Math.max(
-        0,
-        Math.min(maxOffset, prev - timeChange)
-      );
-      return newOffset;
-    });
+              const touch = e.touches[0];
+              const dx = touch.clientX - dragStartX;
+              const visibleDuration = duration / zoomLevel;
+              const pixelsPerSecond = canvasWidth / visibleDuration;
 
-    setDragStartX(touch.clientX);
-  }}
-  onTouchEnd={(e) => {
-    if (!isDragging) {
-      handleWaveformClick(e);
-    }
-    setIsDragging(false);
-    e.currentTarget.style.cursor = "grab";
-  }}
-  onTouchCancel={(e) => {
-    setIsDragging(false);
-    e.currentTarget.style.cursor = "grab";
-  }}
->
-        <canvas
-          ref={canvasRef}
-          width={800}
-          height={80}
-          className="waveform-canvas"
-        />
+              // Convert pixel drag to time
+              const timeChange = dx / pixelsPerSecond;
+
+              // Update offset
+              const maxOffset = Math.max(0, duration - visibleDuration);
+              setWaveformOffset((prev) => {
+                const newOffset = Math.max(
+                  0,
+                  Math.min(maxOffset, prev - timeChange)
+                );
+                return newOffset;
+              });
+
+              setDragStartX(touch.clientX);
+            }}
+            onTouchEnd={(e) => {
+              if (!isDragging) {
+                handleWaveformClick(e);
+              }
+              setIsDragging(false);
+              e.currentTarget.style.cursor = "grab";
+            }}
+            onTouchCancel={(e) => {
+              setIsDragging(false);
+              e.currentTarget.style.cursor = "grab";
+            }}
+          >
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={80}
+              className="waveform-canvas"
+            />
 
             {/* Focus on start point button */}
             <button
@@ -1355,63 +1359,70 @@ const adjustStartPointByMs = (milliseconds) => {
 
           {/* Add progress slider below the Set Start Point button - only active when fully zoomed out */}
           <div
-  className="audio-progress"
-  style={{
-    margin: "15px 0 5px 0",
-    width: "100%",
-  }}
->
-  <input
-    type="range"
-    min="0"
-    max="1" // Change to a normalized 0-1 range
-    step="0.01"
-    value={(currentPlaybackTime - waveformOffset) / (duration / zoomLevel)}
-    onMouseDown={() => {
-      // Pause playback if currently playing
-      if (audioRef?.current && !audioRef.current.paused) {
-        audioRef.current.pause();
-      }
-    }}
-    onMouseUp={() => {
-      // Resume playback if it was playing before
-      if (audioRef?.current && isPlayingRef.current) {
-        audioRef.current
-          .play()
-          .catch((err) => console.error("Resume error:", err));
-      }
-    }}
-    onChange={(e) => {
-      // Normalize the slider value (0-1) to the current visible waveform area
-      const sliderValue = parseFloat(e.target.value);
-      
-      // Calculate the time within the current visible waveform
-      const visibleDuration = duration / zoomLevel;
-      const constrainedTime = waveformOffset + (sliderValue * visibleDuration);
+            className="audio-progress"
+            style={{
+              margin: "15px 0 5px 0",
+              width: "100%",
+            }}
+          >
+            <input
+              type="range"
+              min="0"
+              max="1" // Change to a normalized 0-1 range
+              step="0.01"
+              value={
+                (currentPlaybackTime - waveformOffset) / (duration / zoomLevel)
+              }
+              onMouseDown={() => {
+                // Pause playback if currently playing
+                if (audioRef?.current && !audioRef.current.paused) {
+                  audioRef.current.pause();
+                }
+              }}
+              onMouseUp={() => {
+                // Resume playback if it was playing before
+                if (audioRef?.current && isPlayingRef.current) {
+                  audioRef.current
+                    .play()
+                    .catch((err) => console.error("Resume error:", err));
+                }
+              }}
+              onChange={(e) => {
+                // Normalize the slider value (0-1) to the current visible waveform area
+                const sliderValue = parseFloat(e.target.value);
 
-      // Update audio position
-      if (audioRef?.current) {
-        audioRef.current.currentTime = constrainedTime;
-      }
+                // Calculate the time within the current visible waveform
+                const visibleDuration = duration / zoomLevel;
+                const constrainedTime =
+                  waveformOffset + sliderValue * visibleDuration;
 
-      // Update playback position immediately
-      setCurrentPlaybackTime(constrainedTime);
-    }}
-    className="progress-slider"
-    style={{
-      width: "100%",
-      height: "10px",
-      borderRadius: "5px",
-      outline: "none",
-      background: `linear-gradient(to right, rgb(255, 132, 0) ${
-        (currentPlaybackTime - waveformOffset) / (duration / zoomLevel) * 100
-      }%, rgb(32, 32, 32) ${
-        (currentPlaybackTime - waveformOffset) / (duration / zoomLevel) * 100
-      }%)`,
-      cursor: "pointer",
-    }}
-  />
-</div>
+                // Update audio position
+                if (audioRef?.current) {
+                  audioRef.current.currentTime = constrainedTime;
+                }
+
+                // Update playback position immediately
+                setCurrentPlaybackTime(constrainedTime);
+              }}
+              className="progress-slider"
+              style={{
+                width: "100%",
+                height: "10px",
+                borderRadius: "5px",
+                outline: "none",
+                background: `linear-gradient(to right, rgb(255, 132, 0) ${
+                  ((currentPlaybackTime - waveformOffset) /
+                    (duration / zoomLevel)) *
+                  100
+                }%, rgb(32, 32, 32) ${
+                  ((currentPlaybackTime - waveformOffset) /
+                    (duration / zoomLevel)) *
+                  100
+                }%)`,
+                cursor: "pointer",
+              }}
+            />
+          </div>
         </>
       )}
     </div>
