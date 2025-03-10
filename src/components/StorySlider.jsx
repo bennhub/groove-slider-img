@@ -1350,7 +1350,13 @@ const ShareNotification = ({ isVisible, onClose }) => {
 // Edit Panel Component
 //--------------------------------------------
 // Edit Panel Component
-const EditPanel = ({ stories, onClose, onReorder, onDelete, saveStateOnEditPanelToggle, }) => {
+const EditPanel = ({
+  stories,
+  onClose,
+  onReorder,
+  onDelete,
+  saveStateOnEditPanelToggle,
+}) => {
   const [positions, setPositions] = useState(
     stories.map((_, index) => index + 1)
   );
@@ -1535,7 +1541,7 @@ const BottomMenu = ({
     setShowEditPanel(newState);
     if (showDurationPanel) setShowDurationPanel(false);
     if (showMusicPanel) setShowMusicPanel(false);
-    
+
     // Save state when panel is toggled
     saveStateOnEditPanelToggle(newState);
   };
@@ -1604,16 +1610,16 @@ Loop Slideshow
         />
       )}
       {showEditPanel && (
-  <EditPanel
-    stories={stories}
-    onClose={() => {
-      setShowEditPanel(false);
-      saveStateOnEditPanelToggle(false); // Save when closed with X button
-    }}
-    onReorder={handleReorder}
-    onDelete={handleDelete}
-  />
-)}
+        <EditPanel
+          stories={stories}
+          onClose={() => {
+            setShowEditPanel(false);
+            saveStateOnEditPanelToggle(false); // Save when closed with X button
+          }}
+          onReorder={handleReorder}
+          onDelete={handleDelete}
+        />
+      )}
       <div className="bottom-menu-buttons">
         <button
           className={`bottom-menu-button ${isLoopingEnabled ? "active" : ""}`}
@@ -1726,14 +1732,14 @@ const StorySlider = () => {
   const audioRef = useRef(null);
   const intervalRef = useRef(null);
 
-// save edit panel
+  // save edit panel
   const saveStateOnEditPanelToggle = async (isOpen) => {
     try {
       // Save the current state when the edit panel is toggled
       await handleSaveSessionToDb(`auto_save_edit_panel_${Date.now()}`, true);
-      console.log(`Session saved on edit panel ${isOpen ? 'open' : 'close'}`);
+      console.log(`Session saved on edit panel ${isOpen ? "open" : "close"}`);
     } catch (error) {
-      console.error('Error saving state on edit panel toggle:', error);
+      console.error("Error saving state on edit panel toggle:", error);
     }
   };
 
@@ -2072,8 +2078,6 @@ const StorySlider = () => {
     }
   };
   //handle Save and load sessions from indexDB
-  // Add this function inside your StorySlider component,
-  // near your other handler functions like handleSaveSession:
   const handleLoadSession = async (sessionId) => {
     try {
       // Stop any current playback
@@ -2384,7 +2388,6 @@ const StorySlider = () => {
     }
   };
   // Handle Save Sessions
-  // Add this new function with a different name
   const handleSaveSessionToDb = async (sessionName, isSilent = false) => {
     try {
       // Log the data being saved
@@ -2626,13 +2629,13 @@ const StorySlider = () => {
                
               {showEditPanel && (
                 <EditPanel
-                stories={stories}
-                onClose={() => {
-                  setShowEditPanel(false);
-                  saveStateOnEditPanelToggle(false);
-                }}
-                onReorder={handleReorder}
-                onDelete={handleDelete}
+                  stories={stories}
+                  onClose={() => {
+                    setShowEditPanel(false);
+                    saveStateOnEditPanelToggle(false);
+                  }}
+                  onReorder={handleReorder}
+                  onDelete={handleDelete}
                 />
               )}
                

@@ -212,6 +212,15 @@ const WaveformVisualizer = ({
   const animationFrameRef = useRef(null);
   const isPlayingRef = useRef(false);
 
+// Define the shared button styles
+  const baseButtonStyle = {
+    WebkitUserSelect: "none", // Safari
+    MozUserSelect: "none", // Firefox
+    msUserSelect: "none", // IE/Edge
+    userSelect: "none", // Standard syntax
+    WebkitTouchCallout: "none", // iOS Safari
+  };
+
   // Load audio data and retrieve positions from IndexedDB
   useEffect(() => {
     if (!audioUrl || loadedAudioUrlRef.current === audioUrl) return;
@@ -1089,24 +1098,7 @@ const WaveformVisualizer = ({
             }}
           >
             <span
-              className="current-position"
-              style={{
-                color: "white",
-                fontSize: "14px",
-                border: "solid 2px white", // Red to match playhead color
-                borderRadius: "3px",
-                padding: "2px 5px",
-                WebkitUserSelect: "none",
-                MozUserSelect: "none",
-                msUserSelect: "none",
-                userSelect: "none",
-                WebkitTouchCallout: "none",
-                WebkitUserSelect: "none", // Safari
-                MozUserSelect: "none", // Firefox
-                msUserSelect: "none", // IE/Edge
-                userSelect: "none", // Standard syntax
-                WebkitTouchCallout: "none", // iOS Safari
-              }}
+            
             >
               Position: {formatTime(currentPlaybackTime)}
             </span>
@@ -1114,17 +1106,13 @@ const WaveformVisualizer = ({
             <span
               className="start-point"
               style={{
+                ...baseButtonStyle, // Shared styles
                 color: "white",
                 fontSize: "14px",
                 border: "solid 2px orange",
                 borderRadius: "3px",
                 padding: "2px 5px",
                 cursor: "pointer",
-                WebkitUserSelect: "none", // Safari
-                MozUserSelect: "none", // Firefox
-                msUserSelect: "none", // IE/Edge
-                userSelect: "none", // Standard syntax
-                WebkitTouchCallout: "none", // iOS Safari
               }}
               onClick={focusOnStartPoint}
               title="Click to focus on start point"
@@ -1137,16 +1125,12 @@ const WaveformVisualizer = ({
             <span
               className="duration"
               style={{
+                ...baseButtonStyle, // Shared styles
                 color: "white",
                 fontSize: "14px",
                 border: "solid 2px white",
                 borderRadius: "3px",
                 padding: "2px 5px",
-                WebkitUserSelect: "none", // Safari
-                MozUserSelect: "none", // Firefox
-                msUserSelect: "none", // IE/Edge
-                userSelect: "none", // Standard syntax
-                WebkitTouchCallout: "none", // iOS Safari
               }}
             >
               Total: {formatTime(duration)}
@@ -1169,6 +1153,7 @@ const WaveformVisualizer = ({
                 onClick={handleZoomOut}
                 disabled={zoomLevel <= 1}
                 style={{
+                  ...baseButtonStyle, // Shared styles
                   background: zoomLevel >= 64 ? "#555" : "#222",
                   color: "white",
                   border: "solid 2px white",
@@ -1177,11 +1162,6 @@ const WaveformVisualizer = ({
                   fontSize: "16px",
                   fontFamily: "Arial, sans-serif",
                   cursor: zoomLevel >= 64 ? "not-allowed" : "pointer",
-                  WebkitUserSelect: "none", // Safari
-                  MozUserSelect: "none", // Firefox
-                  msUserSelect: "none", // IE/Edge
-                  userSelect: "none", // Standard syntax
-                  WebkitTouchCallout: "none", // iOS Safari
                 }}
               >
                 <Minus />
@@ -1190,6 +1170,7 @@ const WaveformVisualizer = ({
                 onClick={handleZoomIn}
                 disabled={zoomLevel >= 64}
                 style={{
+                  ...baseButtonStyle, // Shared styles
                   background: zoomLevel >= 64 ? "#555" : "#222",
                   color: "white",
                   border: "solid 2px white",
@@ -1198,11 +1179,6 @@ const WaveformVisualizer = ({
                   fontSize: "16px",
                   fontFamily: "Arial, sans-serif",
                   cursor: zoomLevel >= 64 ? "not-allowed" : "pointer",
-                  WebkitUserSelect: "none", // Safari
-                  MozUserSelect: "none", // Firefox
-                  msUserSelect: "none", // IE/Edge
-                  userSelect: "none", // Standard syntax
-                  WebkitTouchCallout: "none", // iOS Safari
                 }}
               >
                 <Plus />
@@ -1255,6 +1231,7 @@ const WaveformVisualizer = ({
             <button
               onClick={() => adjustStartPointByMs(-20)}
               style={{
+                ...baseButtonStyle, // Shared styles
                 background: "#DAA520",
                 border: "none",
                 borderRadius: "4px",
@@ -1262,11 +1239,6 @@ const WaveformVisualizer = ({
                 color: "black",
                 cursor: "pointer",
                 fontSize: "16px",
-                WebkitUserSelect: "none",
-                MozUserSelect: "none",
-                msUserSelect: "none",
-                userSelect: "none",
-                WebkitTouchCallout: "none",
               }}
             >
               -20 ms
@@ -1275,6 +1247,7 @@ const WaveformVisualizer = ({
             <button
               onClick={() => adjustStartPointByMs(-5)}
               style={{
+                ...baseButtonStyle, // Shared styles
                 background: "#DAA520",
                 border: "none",
                 borderRadius: "4px",
@@ -1282,11 +1255,6 @@ const WaveformVisualizer = ({
                 color: "black",
                 cursor: "pointer",
                 fontSize: "16px",
-                WebkitUserSelect: "none",
-                MozUserSelect: "none",
-                msUserSelect: "none",
-                userSelect: "none",
-                WebkitTouchCallout: "none",
               }}
             >
               -5 ms
@@ -1295,6 +1263,7 @@ const WaveformVisualizer = ({
             <button
               onClick={() => adjustStartPointByMs(5)}
               style={{
+                ...baseButtonStyle, // Shared styles
                 background: "#DAA520",
                 border: "none",
                 borderRadius: "4px",
@@ -1302,11 +1271,6 @@ const WaveformVisualizer = ({
                 color: "black",
                 cursor: "pointer",
                 fontSize: "16px",
-                WebkitUserSelect: "none",
-                MozUserSelect: "none",
-                msUserSelect: "none",
-                userSelect: "none",
-                WebkitTouchCallout: "none",
               }}
             >
               +5 ms
@@ -1315,6 +1279,7 @@ const WaveformVisualizer = ({
             <button
               onClick={() => adjustStartPointByMs(20)}
               style={{
+                ...baseButtonStyle, // Shared styles
                 background: "#DAA520",
                 border: "none",
                 borderRadius: "4px",
@@ -1322,11 +1287,6 @@ const WaveformVisualizer = ({
                 color: "black",
                 cursor: "pointer",
                 fontSize: "16px",
-                WebkitUserSelect: "none",
-                MozUserSelect: "none",
-                msUserSelect: "none",
-                userSelect: "none",
-                WebkitTouchCallout: "none",
               }}
             >
               +20 ms
@@ -1337,6 +1297,7 @@ const WaveformVisualizer = ({
             className="set-start-point-button"
             onClick={handleSetStartPoint}
             style={{
+              ...baseButtonStyle, // Shared styles
               background: "#FFD700",
               border: "none",
               borderRadius: "4px",
@@ -1347,11 +1308,6 @@ const WaveformVisualizer = ({
               fontWeight: "bold",
               cursor: "pointer",
               width: "100%",
-              WebkitUserSelect: "none", // Safari
-              MozUserSelect: "none", // Firefox
-              msUserSelect: "none", // IE/Edge
-              userSelect: "none", // Standard syntax
-              WebkitTouchCallout: "none", // iOS Safari
             }}
           >
             Set Start Point
