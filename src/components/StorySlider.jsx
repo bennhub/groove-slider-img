@@ -17,6 +17,7 @@ import {
   Pause,
   Edit,
   Share,
+  Settings,
   Download,
   Music,
   Volume,
@@ -133,17 +134,14 @@ const GrooveGalleryLanding = ({
           >
             <span
               style={{
-                width: 24,
-                height: 24,
+                width: 50,
+                height: 50,
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                borderRadius: "50%",
-                border: "1px solid white",
-                fontSize: "16px",
+                justifyContent: "left",
               }}
             >
-              i
+            <Settings />
             </span>
           </button>
           <h1 className="app-title">Groove Slider v1.3</h1>
@@ -623,7 +621,6 @@ const MusicPanel = ({
               className="hidden-input"
             />
           </label>
-          {/* Recording button */}
           {/* Recording button */}
           <label className="record-button">
             <Mic className="icon" />
